@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#171b18" />
+  <title>Paws on the Run — Beta V2</title>
+  <style>:root{font-family:Inter,ui-rounded,"SF Pro Rounded","Avenir Next",system-ui,sans-serif;color:#f8f2e8;background:#101310;--cream:#f2e8d5;--rust:#c95d3e;--teal:#55a89c;--olive:#7a8761;--ink:#202521;--glass:rgba(24,29,25,.78)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body,#app{width:100%;height:100%;margin:0;overflow:hidden;background:#111511;touch-action:none;overscroll-behavior:none}body{position:fixed;inset:0}#scene{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none}.hidden{display:none!important}
+.hud{position:absolute;inset:0;pointer-events:none;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:start;gap:10px}.objective-card,.score-card,.star-card{background:var(--glass);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 30px rgba(0,0,0,.18);border-radius:18px;min-height:52px}.objective-card{justify-self:start;display:flex;align-items:center;gap:10px;padding:9px 14px;max-width:min(58vw,420px)}.objective-card div{display:grid}.objective-card b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.objective-card small{opacity:.72;font-variant-numeric:tabular-nums}.cat-dot{width:12px;height:12px;border-radius:50%;background:var(--rust);box-shadow:0 0 0 4px rgba(255,255,255,.08)}.score-card{display:grid;text-align:right;padding:7px 13px;line-height:1}.score-card b{font-size:20px}.score-card small{margin-top:5px;color:#badad3}.star-card{padding:14px 13px;color:#f3cf6c;letter-spacing:2px;white-space:nowrap}
+.screen-root{position:absolute;inset:0;display:grid;place-items:center;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));pointer-events:none}.screen{width:min(780px,94vw);max-height:92vh;overflow:auto;pointer-events:auto;background:linear-gradient(145deg,rgba(35,41,35,.96),rgba(20,24,21,.94));border:1px solid rgba(255,255,255,.12);border-radius:28px;box-shadow:0 30px 100px rgba(0,0,0,.45);padding:24px}.screen h1,.screen h2,.screen p{margin-top:0}.screen h1{font-size:clamp(30px,6vw,62px);line-height:.92;letter-spacing:-.045em}.screen h1 em{font-style:normal;color:#ef8b68}.screen p{color:#cfd2c8}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{appearance:none;border:0;border-radius:15px;background:var(--cream);color:#202521;font:700 15px inherit;padding:13px 17px;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}.btn.primary{background:var(--rust);color:white}.btn.secondary{background:#39423a;color:#f8f2e8}.btn:disabled{opacity:.38;cursor:not-allowed}.tier-grid,.level-grid,.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:18px 0}.tile{border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.055);border-radius:18px;padding:15px;text-align:left;color:#f8f2e8;min-height:110px}.tile strong{display:block}.tile small{opacity:.68}.tile.selected{outline:2px solid var(--teal);background:rgba(85,168,156,.14)}.tile.locked{opacity:.36}.tile .stars{color:#f3cf6c;letter-spacing:1px}.chapter{margin:20px 0 5px;color:#b9c1b5;text-transform:uppercase;font-size:12px;letter-spacing:.14em}.result-score{font-size:clamp(50px,10vw,96px);letter-spacing:-.05em}.pillar{display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:7px 0}.achievement{color:#f3cf6c}.hint{display:inline-block;border:1px solid rgba(255,255,255,.15);padding:5px 9px;border-radius:20px;font-size:12px;opacity:.75}
+.henley-indicator{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;background:#b9543d;color:white;padding:5px 9px;border-radius:999px;font-weight:900;font-size:10px;letter-spacing:.08em;box-shadow:0 4px 18px rgba(0,0,0,.3)}.toast{position:absolute;left:50%;bottom:max(38px,calc(env(safe-area-inset-bottom) + 22px));transform:translateX(-50%);pointer-events:none;background:#202921;color:white;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.35)}.pause-banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(15,17,15,.82);padding:18px 28px;border-radius:20px;display:grid;text-align:center;pointer-events:none}.pause-banner span{font-size:12px;opacity:.62;margin-top:4px}.build{position:absolute;right:max(8px,env(safe-area-inset-right));bottom:max(7px,env(safe-area-inset-bottom));font:600 9px ui-monospace,monospace;color:rgba(255,255,255,.45);pointer-events:none}.qa-indicator{position:absolute;left:max(8px,env(safe-area-inset-left));bottom:max(8px,env(safe-area-inset-bottom));width:24px;height:24px;border-radius:50%;background:#dc6656;display:grid;place-items:center;font-weight:900;cursor:pointer}.qa-panel{position:absolute;left:max(8px,env(safe-area-inset-left));bottom:40px;width:min(460px,92vw);max-height:45vh;overflow:auto;background:rgba(6,8,7,.9);border:1px solid #465048;border-radius:12px;padding:10px;color:#a8d3bf;font:11px/1.4 ui-monospace,monospace;pointer-events:auto}.route-marker{position:absolute;pointer-events:none}
+@media(max-width:640px){.hud{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"obj score" "stars stars"}.objective-card{grid-area:obj;max-width:68vw}.score-card{grid-area:score}.star-card{grid-area:stars;justify-self:end;min-height:38px;padding:9px 12px}.screen{padding:18px;border-radius:22px}.level-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tile{min-height:96px;padding:12px}}
+@media(orientation:portrait) and (max-width:500px){.screen h1{font-size:42px}}
+
+.cosmetic-grid{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}.cosmetic-chip{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.055);color:#f8f2e8;border-radius:999px;padding:9px 12px;display:flex;align-items:center;gap:8px;cursor:pointer}.cosmetic-chip.selected{outline:2px solid var(--teal);background:rgba(85,168,156,.14)}.swatch{width:15px;height:15px;border-radius:50%;background:#d7c4a1;border:2px solid rgba(255,255,255,.45)}.swatch.teal{background:var(--teal)}.swatch.rust{background:var(--rust)}.swatch.olive{background:var(--olive)}
+</style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="Paws on the Run game view"></canvas>
+    <div id="hud" class="hud hidden" aria-live="polite">
+      <section class="objective-card"><span id="objective-cat" class="cat-dot"></span><div><b id="objective-name">Objective</b><small id="objective-time">0.0</small></div></section>
+      <section class="score-card"><b id="score">0</b><small id="combo">x1</small></section>
+      <section class="star-card" id="stars">☆ ☆ ☆</section>
+    </div>
+    <div id="henley-indicator" class="henley-indicator hidden">HENLEY</div>
+    <div id="toast" class="toast hidden"></div>
+    <div id="screen-root" class="screen-root"></div>
+    <div id="pause-banner" class="pause-banner hidden"><b>Paused</b><span id="pause-reason"></span></div>
+    <div id="qa-indicator" class="qa-indicator hidden">!</div>
+    <pre id="qa-panel" class="qa-panel hidden"></pre>
+    <div id="build" class="build"></div>
+  </div>
+  <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+  <script type="module">
+const chunkUrls=['https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-0.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-1.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-2.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-3.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-4.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-5.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-6.txt'];
+const compressed=(await Promise.all(chunkUrls.map(async u=>{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('Deployment chunk failed '+r.status);return r.text()}))).join('');
+const bytes=Uint8Array.from(atob(compressed),c=>c.charCodeAt(0));
+if (!("DecompressionStream" in globalThis)) throw new Error("This browser does not support the Beta V2 deployment loader.");
+const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+const source=await new Response(stream).text();
+const moduleUrl=URL.createObjectURL(new Blob([source],{type:"text/javascript"}));
+try{await import(moduleUrl)}finally{setTimeout(()=>URL.revokeObjectURL(moduleUrl),1000)}
+</script>
+</body>
+</html>
