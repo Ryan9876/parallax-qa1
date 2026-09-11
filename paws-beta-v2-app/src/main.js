@@ -1,4 +1,5 @@
 import './style.css';
+import './onboarding.css';
 import { ProfileStore } from './profile.js';
 import { GameUI } from './ui.js';
 import { PawsGame } from './game.js';
@@ -26,7 +27,7 @@ const qaSurface={
   get levelId(){return runSnapshot()?.levelId||null;},
   get difficultyTier(){return runSnapshot()?.difficulty||profile.data.difficulty||null;},
   get objectiveIndex(){return runSnapshot()?.objectiveIndex??null;},
-  get objectiveStatus(){const s=runSnapshot();if(!s)return'menu';if(s.paused)return'paused';if(s.mode!=='playing')return s.mode;return s.cats?.some(c=>c.captured)?'autonomous-penalty':'active';},
+  get objectiveStatus(){const s=runSnapshot();if(!s)return'menu';if(s.paused)return'paused';if(s.mode!=='playing')return s.mode;if(s.onboardingPhase)return`onboarding-${s.onboardingPhase}`;if(s.objectiveTimerPaused)return`held-${s.objectivePauseReason||'unknown'}`;return s.cats?.some(c=>c.captured)?'autonomous-penalty':'active';},
   get pillars(){const p=runSnapshot()?.pillars||{};return{objective:Number(p.objective||0),collectible:Number(p.collectible||0),evasion:Number(p.evasion||0),switch:Number(p.switch||0)};},
   get starsEarned(){return Number(runSnapshot()?.successStars||0);},
   get autonomousPenalty(){const s=runSnapshot();if(!s)return{active:false,cat:null,remaining:0};const entry=s.cats?.map((cat,index)=>({cat,index})).find(v=>v.cat.captured);return entry?{active:true,cat:entry.cat.name,remaining:Number(entry.cat.returnTimer||0)}:{active:false,cat:null,remaining:0};},
