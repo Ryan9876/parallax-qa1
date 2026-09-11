@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "generate:assets": "node scripts/generate-assets.mjs",
+    "vendor:cc0": "node scripts/vendor-cc0-assets.mjs",
+    "prepare:assets": "npm run generate:assets && npm run vendor:cc0",
     "test:contracts": "node scripts/contract-tests.mjs",
-    "build": "npm run generate:assets && vite build",
-    "dev": "npm run generate:assets && vite",
+    "build": "npm run prepare:assets && vite build",
+    "dev": "npm run prepare:assets && vite",
     "preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
