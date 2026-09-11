@@ -1,3 +1,5 @@
+import { TUNING } from './config.js';
+
 const PIECES = {
   kitchen: [
     ['island', 0, 0, 3.2, 1.6, 1.05], ['counter', -4.3, -3.7, 5.8, 0.8, 1.0], ['counter', 4.3, -3.7, 5.8, 0.8, 1.0],
@@ -36,7 +38,7 @@ export function assembleLevel(level){
   const colliders=pieces.filter(p=>!['rug','arch','plant','planter','cat-tree'].includes(p.kind)).map(p=>({x:p.x,z:p.z,w:p.w,d:p.d,h:p.h,kind:p.kind}));
   const collectibles=[[-4.5,0],[4.5,0],[-3.6,4.5],[3.6,4.5]].map((p,i)=>({id:`${level.id}-c${i}`,x:p[0]+(rng()-.5)*.4,z:p[1]+(rng()-.5)*.4,pointValue:25}));
   const catSpawns=level.theme==='sunroom'?[{x:-2.2,z:-4.35},{x:2.2,z:-4.35}]:[{x:-.9,z:-4.35},{x:.9,z:-4.35}];
-  return {pieces,colliders,collectibles,bounds:{minX:-5.8,maxX:5.8,minZ:-5.1,maxZ:6.0},spawn:{cats:catSpawns,henley:{x:0,z:2.2}}};
+  return {pieces,colliders,collectibles,bounds:{minX:-5.8,maxX:5.8,minZ:-5.1,maxZ:6.0},spawn:{cats:catSpawns,henley:{x:0,z:4.65}}};
 }
 
 function pointInRect(x,z,c,pad=.42){return x>c.x-c.w/2-pad&&x<c.x+c.w/2+pad&&z>c.z-c.d/2-pad&&z<c.z+c.d/2+pad;}
@@ -44,8 +46,10 @@ export function validateLevel(level){
   const world=assembleLevel(level); const errors=[];
   for(const o of level.objectives){if(world.colliders.some(c=>pointInRect(o.x,o.z,c,.12))) errors.push(`objective ${o.id} intersects ${world.colliders.find(c=>pointInRect(o.x,o.z,c,.12))?.kind}`);}
   for(const s of world.spawn.cats){if(world.colliders.some(c=>pointInRect(s.x,s.z,c,.2))) errors.push('cat spawn intersects collider');}
-  if(Math.hypot(world.spawn.henley.x-world.spawn.cats[0].x,world.spawn.henley.z-world.spawn.cats[0].z)<4.5) errors.push('Henley spawn too close');
+  for(const s of world.spawn.cats){const separation=Math.hypot(world.spawn.henley.x-s.x,world.spawn.henley.z-s.z);if(separation<TUNING.henley.detectionBase)errors.push(`Henley spawn inside base detection radius (${separation.toFixed(2)} < ${TUNING.henley.detectionBase})`);}
   return {ok:errors.length===0,errors};
 }
 
-export const CHAPTER_TWO_STAR_GATE = 8;
+export const CHAPTER_UNLOCK_RATIO = 0.5;
+export function chapterUnlockThreshold(chapter=1){const count=LEVELS.filter(l=>l.chapter===chapter).length;return Math.ceil(count*3*CHAPTER_UNLOCK_RATIO);}
+export const CHAPTER_TWO_STAR_GATE = chapterUnlockThreshold(1);
