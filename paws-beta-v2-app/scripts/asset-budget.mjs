@@ -25,8 +25,16 @@ for(const asset of [...(cc0.furniture||[]),...(cc0.textures||[]),...(cc0.hdri?[c
   assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/'),`${asset.assetId||'asset'} missing same-origin local path`);
   if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing vendored asset ${asset.local}`);}
 }
+const characters=provenance.authoredCharacters||{};
+assert(characters.cat?.license==='CC BY 3.0','authored cat attribution/license missing');
+assert(String(characters.henley?.license||'').toUpperCase().includes('CC0'),'Henley authored asset must be CC0');
+for(const asset of [characters.cat,characters.henley].filter(Boolean)){
+  assert(typeof asset.source==='string'&&asset.source.startsWith('https://'),`${asset.assetId||'character'} missing source attribution`);
+  assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/characters/authored/'),`${asset.assetId||'character'} missing authored local path`);
+  if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing authored character ${asset.local}`);}
+}
 
-const characterFiles=walk(path.join(publicAssets,'models'));
+const characterFiles=[...walk(path.join(publicAssets,'models')),...walk(path.join(publicAssets,'characters','authored'))];
 const environmentFiles=walk(path.join(publicAssets,'cc0','furniture'));
 const textureFiles=[...walk(path.join(publicAssets,'textures')),...walk(path.join(publicAssets,'cc0','textures'))];
 const audioFiles=walk(path.join(publicAssets,'audio'));
@@ -47,8 +55,6 @@ const codeFiles=distFiles.filter(p=>/\.(?:js|css|html)$/i.test(p));
 const codeBytes=bytes(codeFiles);
 assert(codeBytes<=1*MiB,`code and UI ${fmt(codeBytes)} exceed 1 MiB`);
 
-// Runtime-origin behavior is verified in Playwright by observing actual network requests.
-// Do not infer a network request from URL strings embedded in dependency licence/docs text.
 console.log(`Asset budget: total ${fmt(distBytes)}/15; characters ${fmt(characterBytes)}/4; environment ${fmt(environmentBytes)}/3; textures ${fmt(textureBytes)}/4; HDRI ${fmt(hdriBytes)}/1; audio ${fmt(audioBytes)}/2; code ${fmt(codeBytes)}/1.`);
-console.log(`CC0 provenance: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}.`);
+console.log(`CC0 environment: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}. Authored characters: ${characters.cat?.creator||'missing'} cat / ${characters.henley?.creator||'missing'} Henley.`);
 if(failures.length){for(const failure of failures)console.error(`FAIL ${failure}`);process.exit(1);}console.log('PASS release asset category budgets and provenance');
