@@ -5,7 +5,6 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { COLORS, clamp } from './config.js';
 
 function texture(loader,url,repeat=[2,2]){const t=loader.load(url);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...repeat);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
-function configureTexture(t,repeat=[2,2]){if(!t)return null;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...repeat);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
 function mat(color,map=null,{rough=.75,metal=.02,transparent=false,opacity=1}={}){return new THREE.MeshStandardMaterial({color,map,roughness:rough,metalness:metal,transparent,opacity});}
 function shadowed(mesh){mesh.castShadow=true;mesh.receiveShadow=true;return mesh;}
 function box(w,h,d,m,x,y,z,rot=0,{rounded=false,radius=.06}={}){const geo=rounded?new RoundedBoxGeometry(w,h,d,2,Math.min(radius,w*.18,h*.18,d*.18)):new THREE.BoxGeometry(w,h,d,1,1,1);const mesh=shadowed(new THREE.Mesh(geo,m));mesh.position.set(x,y,z);mesh.rotation.y=rot;return mesh;}
@@ -19,19 +18,18 @@ export class SceneView{
     this.camera=new THREE.PerspectiveCamera(48,1,.08,70);this.camera.position.set(0,5,-8);
     this.loader=new THREE.TextureLoader();this.worldGroup=new THREE.Group();this.fxGroup=new THREE.Group();this.scene.add(this.worldGroup,this.fxGroup);
     this.beacon=new THREE.Group();this.scene.add(this.beacon);this.collectibleMeshes=new Map();this.decorAnimations=[];this.assetErrors=[];this.assets={};
+    this.assets.wood=texture(this.loader,'/assets/cc0/textures/wood-floor-1k.jpg',[4,5]);this.assets.plaster=texture(this.loader,'/assets/cc0/textures/plaster-wall-1k.jpg',[4,2]);
     this._lights();this._contactShadows();this.resize();this.ready=this._loadEnvironmentAssets();
   }
   async _safe(name,promise){try{return await promise;}catch(error){this.assetErrors.push(`${name}:${error?.message||error}`);return null;}}
   async _loadEnvironmentAssets(){
     const objLoader=new OBJLoader(),exrLoader=new EXRLoader();
-    const [sofa,coffee,wood,plaster,env]=await Promise.all([
+    const [sofa,coffee,env]=await Promise.all([
       this._safe('kenney-sofa',objLoader.loadAsync('/assets/cc0/furniture/lounge-sofa.obj')),
       this._safe('kenney-coffee',objLoader.loadAsync('/assets/cc0/furniture/coffee-table.obj')),
-      this._safe('polyhaven-wood',this.loader.loadAsync('/assets/cc0/textures/wood-floor-1k.jpg')),
-      this._safe('polyhaven-plaster',this.loader.loadAsync('/assets/cc0/textures/plaster-wall-1k.jpg')),
       this._safe('polyhaven-hdri',exrLoader.loadAsync('/assets/cc0/hdri/studio-small-08-1k.exr')),
     ]);
-    this.assets.sofa=sofa;this.assets.coffee=coffee;this.assets.wood=configureTexture(wood,[4,5]);this.assets.plaster=configureTexture(plaster,[4,2]);
+    this.assets.sofa=sofa;this.assets.coffee=coffee;
     if(env){env.mapping=THREE.EquirectangularReflectionMapping;this.scene.environment=env;}
   }
   _lights(){
@@ -40,7 +38,8 @@ export class SceneView{
     const warm=new THREE.PointLight(0xffbd83,18,13,2);warm.position.set(-4.7,3.6,4.7);this.scene.add(warm);
     const cool=new THREE.PointLight(0x77c9c0,10,12,2);cool.position.set(4.8,3.1,-1.4);this.scene.add(cool);
   }
-  _contactShadows(){const map=radialShadowTexture(),geo=new THREE.PlaneGeometry(1.35,1.05);this.contactShadows=[0,1,2].map((_,i)=>{const m=new THREE.MeshBasicMaterial({map,transparent:true,opacity:i===2?.25:.22,depthWrite:false,toneMapped:false});const s=new THREE.Mesh(geo,m);s.rotation.x=-Math.PI/2;s.position.y=.014;s.renderOrder=1;this.fxGroup.add(s);return s;});}
+  _contactShadows(){const map=radialShadowTexture(),geo=new THREE.PlaneGeometry(1.35,1.05);this.contactShadows=[0,1,2].map((_,i)=>{const m=new THREE.MeshBasicMaterial({map,transparent:true,opacity:i===2?.25:.22,depthWrite:false,toneMapped:false});const s=new THREE.Mesh(geo,m);s.rotation.x=-Math.PI/2;s.position.y=.014;s.renderOrder=1;s.visible=false;this.fxGroup.add(s);return s;});}
+  _syncContactShadows(){const names=['cat-orange','cat-gray','henley'];for(let i=0;i<names.length;i++){const s=this.contactShadows[i],v=this.scene.getObjectByName(names[i]);if(!v||!v.visible){s.visible=false;continue;}s.visible=true;const height=Math.max(0,v.position.y);s.position.set(v.position.x,.014,v.position.z);const fade=1-clamp(height/2.1,0,.82);s.material.opacity=(i===2?.24:.21)*fade;const scale=1+clamp(height*.16,0,.28);s.scale.set(scale,scale,scale);}}
   _fitAuthored(template,p,material){if(!template)return null;const obj=template.clone(true);obj.traverse(n=>{if(n.isMesh){n.material=material;n.castShadow=true;n.receiveShadow=true;}});const base=new THREE.Box3().setFromObject(obj),size=base.getSize(new THREE.Vector3());if(size.x<.001||size.y<.001||size.z<.001)return null;obj.scale.set(p.w/size.x,p.h/size.y,p.d/size.z);const scaled=new THREE.Box3().setFromObject(obj);obj.position.set(p.x,-scaled.min.y,p.z);obj.rotation.y=p.rot;return obj;}
   _backgroundCluster(kitchen,{woodMat,fabricMat,cabinetMat}){
     const group=new THREE.Group();group.name='decorative-depth-cluster';
@@ -55,7 +54,7 @@ export class SceneView{
   build(level,world){
     this.clearWorld();const kitchen=level.theme==='kitchen';this.scene.background=new THREE.Color(kitchen?0xc8bcaa:0xb5c8bc);this.scene.fog.color.copy(this.scene.background);
     const fallbackFloor=texture(this.loader,kitchen?'/assets/textures/tile.svg':'/assets/textures/wood.svg',kitchen?[8,8]:[6,8]),fallbackWood=texture(this.loader,'/assets/textures/wood.svg',[2,2]),rug=texture(this.loader,'/assets/textures/rug.svg',[2,2]),fabric=texture(this.loader,'/assets/textures/fabric.svg',[2,2]);
-    const floorMap=kitchen?fallbackFloor:(this.assets.wood||fallbackFloor),woodMap=this.assets.wood||fallbackWood,wallMap=this.assets.plaster||null;
+    const floorMap=kitchen?fallbackFloor:this.assets.wood,woodMap=this.assets.wood||fallbackWood,wallMap=this.assets.plaster||null;
     const floor=shadowed(new THREE.Mesh(new THREE.PlaneGeometry(14.2,17.4),mat(0xffffff,floorMap,{rough:.88})));floor.rotation.x=-Math.PI/2;floor.position.set(0,-.02,1.5);this.worldGroup.add(floor);
     const wallColor=kitchen?0xeee3d2:0xe6ece2,backWallMat=mat(wallColor,wallMap,{rough:.94}),sideWallMat=new THREE.MeshStandardMaterial({color:wallColor,map:wallMap,roughness:.94,transparent:true,opacity:.18,depthWrite:false,side:THREE.DoubleSide});
     const backWall=box(13,3.15,.18,backWallMat,0,1.575,8.42),leftWall=box(.18,3.15,16.2,sideWallMat,-6.4,1.575,1.05),rightWall=box(.18,3.15,16.2,sideWallMat,6.4,1.575,1.05);leftWall.castShadow=rightWall.castShadow=false;leftWall.receiveShadow=rightWall.receiveShadow=false;leftWall.renderOrder=2;rightWall.renderOrder=2;this.worldGroup.add(backWall,leftWall,rightWall);
@@ -80,9 +79,8 @@ export class SceneView{
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,8,28),new THREE.MeshBasicMaterial({color:COLORS.teal,transparent:true,opacity:.88}));ring.rotation.x=Math.PI/2;const column=new THREE.Mesh(new THREE.CylinderGeometry(.11,.42,2.2,18,1,true),new THREE.MeshBasicMaterial({color:COLORS.teal,transparent:true,opacity:.13,depthWrite:false,side:THREE.DoubleSide}));column.position.y=1.05;this.beacon.add(ring,column);this.beacon.visible=false;
   }
   setObjective(o){if(!o){this.beacon.visible=false;return;}this.beacon.visible=true;this.beacon.position.set(o.x,.06,o.z);this.beacon.traverse(x=>{if(x.material?.color)x.material.color.set(o.cat==='orange'?COLORS.rust:COLORS.teal);});}
-  syncContactShadows(state){if(!state)return;const subjects=[state.cats[0],state.cats[1],state.henley];for(let i=0;i<this.contactShadows.length;i++){const s=this.contactShadows[i],v=subjects[i];if(!v||(i<2&&v.captured)){s.visible=false;continue;}s.visible=true;const airborne=i<2&&!v.grounded,groundY=!airborne&&v.y>0?v.y+.012:.012,height=airborne?v.y:0;s.position.set(v.x,groundY,v.z);const fade=1-clamp(height/2.1,0,.82);s.material.opacity=(i===2?.24:.21)*fade;const scale=1+clamp(height*.16,0,.28);s.scale.set(scale,scale,scale);}}
   collect(id){const m=this.collectibleMeshes.get(id);if(m){m.visible=false;this.collectibleMeshes.delete(id);}}
   resize(){const w=innerWidth,h=innerHeight;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
-  update(time,dt){this.beacon.rotation.y+=dt*.8;this.beacon.position.y=.06+Math.sin(time*3.1)*.04;for(const [,g] of this.collectibleMeshes){g.rotation.y+=dt*1.4;g.position.y=.34+Math.sin(time*2.6+g.userData.phase)*.08;}for(const a of this.decorAnimations)a.o.rotation.z=a.base+Math.sin(time*.9+a.phase)*.05;}
+  update(time,dt){this._syncContactShadows();this.beacon.rotation.y+=dt*.8;this.beacon.position.y=.06+Math.sin(time*3.1)*.04;for(const [,g] of this.collectibleMeshes){g.rotation.y+=dt*1.4;g.position.y=.34+Math.sin(time*2.6+g.userData.phase)*.08;}for(const a of this.decorAnimations)a.o.rotation.z=a.base+Math.sin(time*.9+a.phase)*.05;}
   render(){this.renderer.render(this.scene,this.camera);}
 }
