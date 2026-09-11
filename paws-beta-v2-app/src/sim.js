@@ -1,29 +1,40 @@
 import { TUNING, DIFFICULTIES, detectionRadius, clamp, damp, angleDelta } from './config.js';
 
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
+const VAULTABLE_KINDS=new Set(['island','counter','table','bench','stool','toybox','sofa','chaise','coffee','ottoman']);
 function objectiveDeadline(level,index,difficulty){const base=level.objectives[index]?.deadline||12;return base*(DIFFICULTIES[difficulty]||DIFFICULTIES.cat).deadline;}
 function pointRectDistance(x,z,c){const dx=Math.max(Math.abs(x-c.x)-c.w/2,0),dz=Math.max(Math.abs(z-c.z)-c.d/2,0);return Math.hypot(dx,dz);}
 function circleHits(x,z,r,c){return pointRectDistance(x,z,c)<r;}
 function isFree(world,x,z,r=TUNING.cat.radius){return x>=world.bounds.minX+r&&x<=world.bounds.maxX-r&&z>=world.bounds.minZ+r&&z<=world.bounds.maxZ-r&&!world.colliders.some(c=>circleHits(x,z,r,c));}
 function effectiveObjectiveCat(state,level){const o=level.objectives[state.objectiveIndex];return state.objectiveCatOverride||o?.cat||null;}
+function supportHeight(world,x,z){let y=0;for(const c of world.colliders){if(!VAULTABLE_KINDS.has(c.kind))continue;if(Math.abs(x-c.x)<=Math.max(.05,c.w/2-.04)&&Math.abs(z-c.z)<=Math.max(.05,c.d/2-.04))y=Math.max(y,c.h);}return y;}
+function blockingCollider(cat,x,z,world){return world.colliders.find(c=>circleHits(x,z,TUNING.cat.radius,c)&&cat.y<c.h-.04)||null;}
+function armVault(cat,c,axis,delta){if(!VAULTABLE_KINDS.has(c.kind)||c.h>1.12||c.h<=cat.y+.04)return;cat.vaultWindow=.12;cat.vaultY=c.h;const inset=.16;if(axis==='x'){cat.vaultX=c.x+(delta>0?-c.w/2+inset:c.w/2-inset);cat.vaultZ=clamp(cat.z,c.z-c.d/2+inset,c.z+c.d/2-inset);}else{cat.vaultZ=c.z+(delta>0?-c.d/2+inset:c.d/2-inset);cat.vaultX=clamp(cat.x,c.x-c.w/2+inset,c.x+c.w/2-inset);}}
 
 export function createRunState(level,world,difficulty='kitten'){
   const resolvedDifficulty=DIFFICULTIES[difficulty]?difficulty:'kitten';
-  const cats=world.spawn.cats.map((s,i)=>({name:i===0?'orange':'gray',x:s.x,z:s.z,y:0,vx:0,vz:0,vy:0,heading:0,grounded:true,captured:false,returnTimer:0,lastAnim:'idle'}));
+  const cats=world.spawn.cats.map((s,i)=>({name:i===0?'orange':'gray',x:s.x,z:s.z,y:0,vx:0,vz:0,vy:0,heading:0,grounded:true,captured:false,returnTimer:0,lastAnim:'idle',vaultWindow:0,vaultX:0,vaultZ:0,vaultY:0,vaultAnim:0,landTimer:0}));
   return {mode:'playing',paused:false,pauseReason:'',levelId:level.id,difficulty:resolvedDifficulty,elapsed:0,activeCat:0,activeTime:[0,0],cats,henley:{x:world.spawn.henley.x,z:world.spawn.henley.z,y:0,heading:Math.PI,state:'search',timer:0,target:0,lockedHeading:0,minAttemptDistance:999,catchTimer:0,distractionTimer:0},objectiveIndex:0,objectiveTime:objectiveDeadline(level,0,resolvedDifficulty),objectiveCatOverride:null,objectiveMisses:0,score:0,streak:0,combo:1,pillars:{objective:0,collectible:0,evasion:0,switch:0},collected:new Set(),lastSwitch:-99,switchBonusObjectives:new Set(),nearMisses:0,autonomousCaptures:0,successStars:0,tagTeam:false};
 }
 
 function resolveMove(cat,world,dx,dz){
-  const nx=clamp(cat.x+dx,world.bounds.minX+TUNING.cat.radius,world.bounds.maxX-TUNING.cat.radius);if(!world.colliders.some(c=>circleHits(nx,cat.z,TUNING.cat.radius,c)))cat.x=nx;else cat.vx*=.2;
-  const nz=clamp(cat.z+dz,world.bounds.minZ+TUNING.cat.radius,world.bounds.maxZ-TUNING.cat.radius);if(!world.colliders.some(c=>circleHits(cat.x,nz,TUNING.cat.radius,c)))cat.z=nz;else cat.vz*=.2;
+  const nx=clamp(cat.x+dx,world.bounds.minX+TUNING.cat.radius,world.bounds.maxX-TUNING.cat.radius),blockX=blockingCollider(cat,nx,cat.z,world);if(!blockX)cat.x=nx;else{cat.vx*=.2;armVault(cat,blockX,'x',dx);}
+  const nz=clamp(cat.z+dz,world.bounds.minZ+TUNING.cat.radius,world.bounds.maxZ-TUNING.cat.radius),blockZ=blockingCollider(cat,cat.x,nz,world);if(!blockZ)cat.z=nz;else{cat.vz*=.2;armVault(cat,blockZ,'z',dz);}
 }
 function steerCat(cat,dir,mag,dt,world){
   const has=mag>.02&&Math.hypot(dir.x,dir.z)>.2,targetSpeed=has?TUNING.cat.maxSpeed*mag:0;let tx=0,tz=0;if(has){const l=Math.hypot(dir.x,dir.z)||1;tx=dir.x/l*targetSpeed;tz=dir.z/l*targetSpeed;const targetHeading=Math.atan2(tx,tz);cat.heading+=clamp(angleDelta(cat.heading,targetHeading),-TUNING.cat.turnRate*dt,TUNING.cat.turnRate*dt);}
   const accel=targetSpeed>Math.hypot(cat.vx,cat.vz)?TUNING.cat.accel:TUNING.cat.decel;cat.vx=damp(cat.vx,tx,accel,dt);cat.vz=damp(cat.vz,tz,accel,dt);resolveMove(cat,world,cat.vx*dt,cat.vz*dt);
 }
-function updateVertical(cat,actions,dt){
-  if(actions.jump&&cat.grounded&&!cat.captured){cat.vy=TUNING.cat.jumpVelocity;cat.grounded=false;}
-  if(!cat.grounded){cat.vy-=TUNING.cat.gravity*dt;cat.y+=cat.vy*dt;if(cat.y<=0){cat.y=0;cat.vy=0;cat.grounded=true;}}
+function updateVertical(cat,actions,dt,world){
+  cat.vaultWindow=Math.max(0,cat.vaultWindow-dt);cat.vaultAnim=Math.max(0,cat.vaultAnim-dt);cat.landTimer=Math.max(0,cat.landTimer-dt);let event=null;
+  if(actions.jump&&cat.grounded&&!cat.captured){
+    if(cat.vaultWindow>0&&cat.vaultY>cat.y+.04){cat.x=cat.vaultX;cat.z=cat.vaultZ;cat.y=cat.vaultY;cat.vy=0;cat.grounded=true;cat.vaultWindow=0;cat.vaultAnim=.28;event='vault';}
+    else{cat.vy=TUNING.cat.jumpVelocity;cat.grounded=false;event='jump';}
+  }
+  const ground=supportHeight(world,cat.x,cat.z);
+  if(cat.grounded&&cat.y>ground+.05&&cat.vaultAnim<=0){cat.grounded=false;cat.vy=Math.min(cat.vy,0);}
+  if(!cat.grounded){cat.vy-=TUNING.cat.gravity*dt;cat.y+=cat.vy*dt;const landing=supportHeight(world,cat.x,cat.z);if(cat.y<=landing&&cat.vy<=0){cat.y=landing;cat.vy=0;cat.grounded=true;cat.landTimer=.18;if(!event)event='land';}}
+  return event;
 }
 function findSafeReturnPoint(state,world,active){
   const minHenleyDistance=detectionRadius(state.elapsed,state.difficulty)+.15;let best=null;
@@ -32,8 +43,8 @@ function findSafeReturnPoint(state,world,active){
 }
 function updateAutonomous(state,world,dt){
   const active=state.cats[state.activeCat],idx=1-state.activeCat,cat=state.cats[idx];
-  if(cat.captured){cat.returnTimer-=dt;if(cat.returnTimer<=0){const returnPoint=findSafeReturnPoint(state,world,active);if(!returnPoint){cat.returnTimer=.25;return null;}cat.captured=false;cat.x=returnPoint.x;cat.z=returnPoint.z;cat.y=0;cat.vx=cat.vz=cat.vy=0;return 'returned';}return null;}
-  const side=idx===0?-1:1,target={x:active.x+Math.cos(active.heading)*side*1.3-Math.sin(active.heading)*1.15,z:active.z-Math.sin(active.heading)*side*1.3-Math.cos(active.heading)*1.15};const dx=target.x-cat.x,dz=target.z-cat.z,l=Math.hypot(dx,dz);const mag=l>.55?clamp(l/2,0,.72):0;steerCat(cat,{x:dx,z:dz},mag,dt,world);return null;
+  if(cat.captured){cat.returnTimer-=dt;if(cat.returnTimer<=0){const returnPoint=findSafeReturnPoint(state,world,active);if(!returnPoint){cat.returnTimer=.25;return null;}cat.captured=false;cat.x=returnPoint.x;cat.z=returnPoint.z;cat.y=0;cat.vx=cat.vz=cat.vy=0;cat.grounded=true;cat.vaultWindow=0;return 'returned';}return null;}
+  const side=idx===0?-1:1,target={x:active.x+Math.cos(active.heading)*side*1.3-Math.sin(active.heading)*1.15,z:active.z-Math.sin(active.heading)*side*1.3-Math.cos(active.heading)*1.15};const dx=target.x-cat.x,dz=target.z-cat.z,l=Math.hypot(dx,dz);const mag=l>.55?clamp(l/2,0,.72):0;steerCat(cat,{x:dx,z:dz},mag,dt,world);const vertical=updateVertical(cat,{jump:false},dt,world);return vertical==='land'?'autonomousLand':null;
 }
 function captureAutonomous(state,level,idx,cb){
   const cat=state.cats[idx],tier=DIFFICULTIES[state.difficulty]||DIFFICULTIES.cat;cat.captured=true;cat.returnTimer=tier.penalty;cat.vx=cat.vz=cat.vy=0;state.streak=0;state.combo=1;state.autonomousCaptures++;
@@ -66,9 +77,9 @@ function objectiveComplete(state,level,cb){const o=level.objectives[state.object
 export function stepRun(state,level,world,actions,dt,cb={}){
   if(state.mode!=='playing'||state.paused)return;state.elapsed+=dt;state.activeTime[state.activeCat]+=dt;
   if(actions.switchCat){const next=1-state.activeCat;if(!state.cats[next].captured){state.activeCat=next;const o=level.objectives[state.objectiveIndex],objectiveCat=effectiveObjectiveCat(state,level),eligible=objectiveCat===state.cats[next].name&&!state.switchBonusObjectives.has(o?.id)&&state.elapsed-state.lastSwitch>=TUNING.switchBonusCooldown;state.lastSwitch=state.elapsed;if(eligible){state.score+=40;state.pillars.switch+=40;state.switchBonusObjectives.add(o.id);state.tagTeam=true;cb.switchBonus?.();}cb.switchCat?.(state.cats[next]);}}
-  const controlled=state.cats[state.activeCat];steerCat(controlled,actions.steerDirection,actions.steerMagnitude,dt,world);updateVertical(controlled,actions,dt);
-  const ret=updateAutonomous(state,world,dt);if(ret==='returned')cb.autonomousReturned?.();
-  const o=level.objectives[state.objectiveIndex];if(o){state.objectiveTime-=dt;if(state.objectiveTime<=0){state.streak=0;state.combo=1;state.objectiveMisses++;state.objectiveTime=objectiveDeadline(level,state.objectiveIndex,state.difficulty)*.72;cb.deadline?.(o);}if(controlled.name===effectiveObjectiveCat(state,level)&&Math.hypot(controlled.x-o.x,controlled.z-o.z)<.72&&controlled.y<.25)objectiveComplete(state,level,cb);}
+  const controlled=state.cats[state.activeCat];steerCat(controlled,actions.steerDirection,actions.steerMagnitude,dt,world);const vertical=updateVertical(controlled,actions,dt,world);if(vertical)cb[vertical]?.(controlled);
+  const autoEvent=updateAutonomous(state,world,dt);if(autoEvent==='returned')cb.autonomousReturned?.();
+  const o=level.objectives[state.objectiveIndex];if(o){state.objectiveTime-=dt;if(state.objectiveTime<=0){state.streak=0;state.combo=1;state.objectiveMisses++;state.objectiveTime=objectiveDeadline(level,state.objectiveIndex,state.difficulty)*.72;cb.deadline?.(o);}if(controlled.name===effectiveObjectiveCat(state,level)&&Math.hypot(controlled.x-o.x,controlled.z-o.z)<.72&&Math.abs(controlled.y-supportHeight(world,controlled.x,controlled.z))<.28)objectiveComplete(state,level,cb);}
   for(const c of world.collectibles){if(!state.collected.has(c.id)&&Math.hypot(controlled.x-c.x,controlled.z-c.z)<.5){state.collected.add(c.id);const pts=c.pointValue||25;state.score+=pts;state.pillars.collectible+=pts;cb.collect?.(c,pts);}}
   updateHenley(state,level,world,dt,cb);
 }
