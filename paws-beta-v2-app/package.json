@@ -6,7 +6,8 @@
   "scripts": {
     "generate:assets": "node scripts/generate-assets.mjs",
     "vendor:cc0": "node scripts/vendor-cc0-assets.mjs",
-    "prepare:assets": "npm run generate:assets && npm run vendor:cc0",
+    "vendor:characters": "node scripts/vendor-character-assets.mjs",
+    "prepare:assets": "npm run generate:assets && npm run vendor:cc0 && npm run vendor:characters",
     "test:contracts": "node scripts/contract-tests.mjs",
     "test:asset-budget": "node scripts/asset-budget.mjs",
     "build": "npm run prepare:assets && vite build",
