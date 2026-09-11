@@ -35,6 +35,8 @@ jobs:
           sleep 3
       - name: Browser gameplay QA
         run: node scripts/browser-qa.mjs
+      - name: First-run comprehension QA
+        run: node scripts/onboarding-qa.mjs
       - name: Upload rendered QA evidence
         if: always()
         uses: actions/upload-artifact@v4
