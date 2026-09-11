@@ -1,0 +1,25 @@
+name: Diagnose Paws Beta V2 Boot
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/scripts/paws-beta-v2-bootdiag.mjs'
+      - '.github/workflows/paws-beta-v2-bootdiag.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start stage
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory paws-beta-v2-stage >/tmp/paws-server.log 2>&1 &
+          sleep 2
+      - name: Trace boot fetches
+        run: node .github/scripts/paws-beta-v2-bootdiag.mjs
