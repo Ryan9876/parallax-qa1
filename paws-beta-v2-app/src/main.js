@@ -34,6 +34,7 @@ const qaSurface={
   get runtimeErrors(){return runtimeErrors.map(e=>({...e}));},
   get simulationTime(){return Number(runSnapshot()?.elapsed||0);},
   get build(){return window.__PAWS_QA__?.build||null;},
+  prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},
 };
 window.__POTR_QA__=qaSurface;
 window.addEventListener('error',event=>recordRuntimeError('error',event.error||event.message));
