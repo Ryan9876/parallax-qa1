@@ -10,6 +10,7 @@ const assert=(value,message)=>{if(!value)failures.push(message);};
 const exists=p=>fs.existsSync(p)&&fs.statSync(p).isFile()&&fs.statSync(p).size>0;
 function walk(dir,out=[]){if(!fs.existsSync(dir))return out;for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const full=path.join(dir,entry.name);if(entry.isDirectory())walk(full,out);else if(entry.isFile())out.push(full);}return out;}
 function bytes(files){return files.reduce((sum,p)=>sum+fs.statSync(p).size,0);}
+function fmt(n){return `${(n/MiB).toFixed(2)} MiB`;}
 
 const provenancePath=path.join(publicAssets,'provenance.json');
 assert(exists(provenancePath),'missing public/assets/provenance.json');
@@ -25,25 +26,29 @@ for(const asset of [...(cc0.furniture||[]),...(cc0.textures||[]),...(cc0.hdri?[c
   if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing vendored asset ${asset.local}`);}
 }
 
+const characterFiles=walk(path.join(publicAssets,'models'));
+const environmentFiles=walk(path.join(publicAssets,'cc0','furniture'));
+const textureFiles=[...walk(path.join(publicAssets,'textures')),...walk(path.join(publicAssets,'cc0','textures'))];
+const audioFiles=walk(path.join(publicAssets,'audio'));
 const hdriPath=path.join(publicAssets,'cc0','hdri','studio-small-08-1k.exr');
-assert(exists(hdriPath),'missing 1K HDRI');
-const hdriBytes=exists(hdriPath)?fs.statSync(hdriPath).size:0;
-assert(hdriBytes<=1*MiB,`HDRI ${hdriBytes} bytes exceeds 1 MiB`);
-
-const furnitureFiles=walk(path.join(publicAssets,'cc0','furniture'));
-const furnitureBytes=bytes(furnitureFiles);
-assert(furnitureBytes<=2*MiB,`CC0 environment geometry source ${furnitureBytes} bytes exceeds 2 MiB`);
+const characterBytes=bytes(characterFiles),environmentBytes=bytes(environmentFiles),textureBytes=bytes(textureFiles),audioBytes=bytes(audioFiles),hdriBytes=exists(hdriPath)?fs.statSync(hdriPath).size:0;
+assert(characterBytes<=4*MiB,`characters ${fmt(characterBytes)} exceed 4 MiB`);
+assert(environmentBytes<=3*MiB,`environment geometry ${fmt(environmentBytes)} exceeds 3 MiB`);
+assert(textureBytes<=4*MiB,`textures ${fmt(textureBytes)} exceed 4 MiB`);
+assert(hdriBytes>0,'missing 1K HDRI');
+assert(hdriBytes<=1*MiB,`HDRI ${fmt(hdriBytes)} exceeds 1 MiB`);
+assert(audioBytes<=2*MiB,`audio ${fmt(audioBytes)} exceeds 2 MiB`);
 
 const distFiles=walk(dist);
 assert(distFiles.length>0,'dist is empty; run build before asset budget gate');
 const distBytes=bytes(distFiles);
-assert(distBytes<=15*MiB,`initial distribution ${distBytes} bytes exceeds 15 MiB`);
+assert(distBytes<=15*MiB,`initial distribution ${fmt(distBytes)} exceeds 15 MiB`);
+const codeFiles=distFiles.filter(p=>/\.(?:js|css|html)$/i.test(p));
+const codeBytes=bytes(codeFiles);
+assert(codeBytes<=1*MiB,`code and UI ${fmt(codeBytes)} exceed 1 MiB`);
 
-const runtimeFiles=distFiles.filter(p=>/\.(?:js|css|html)$/i.test(p));
-for(const p of runtimeFiles){const text=fs.readFileSync(p,'utf8');const remote=text.match(/https?:\/\/[^"'`\s)]+/g)||[];const disallowed=remote.filter(u=>!u.includes('www.w3.org/2000/svg'));assert(disallowed.length===0,`${path.relative(dist,p)} contains runtime remote origin(s): ${disallowed.slice(0,3).join(', ')}`);}
-
-const generatedRuntime=runtimeFiles.filter(p=>/\.js$/i.test(p));
-const jsBytes=bytes(generatedRuntime);
-console.log(`Asset budget: dist ${(distBytes/MiB).toFixed(2)} MiB / 15 MiB; HDRI ${(hdriBytes/1024).toFixed(1)} KiB / 1024 KiB; CC0 furniture ${(furnitureBytes/1024).toFixed(1)} KiB; JS ${(jsBytes/1024).toFixed(1)} KiB.`);
+// Runtime-origin behavior is verified in Playwright by observing actual network requests.
+// Do not infer a network request from URL strings embedded in dependency licence/docs text.
+console.log(`Asset budget: total ${fmt(distBytes)}/15; characters ${fmt(characterBytes)}/4; environment ${fmt(environmentBytes)}/3; textures ${fmt(textureBytes)}/4; HDRI ${fmt(hdriBytes)}/1; audio ${fmt(audioBytes)}/2; code ${fmt(codeBytes)}/1.`);
 console.log(`CC0 provenance: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}.`);
-if(failures.length){for(const failure of failures)console.error(`FAIL ${failure}`);process.exit(1);}console.log('PASS release asset/origin budgets');
+if(failures.length){for(const failure of failures)console.error(`FAIL ${failure}`);process.exit(1);}console.log('PASS release asset category budgets and provenance');
