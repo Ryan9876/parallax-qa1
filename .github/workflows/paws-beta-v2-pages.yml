@@ -1,0 +1,39 @@
+name: Deploy Paws Beta V2 Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'paws-beta-v2-stage/**'
+      - '.github/workflows/paws-beta-v2-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: paws-beta-v2-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload Beta V2 site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: paws-beta-v2-stage
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
