@@ -20,7 +20,7 @@ export class InputController {
     let sx=0,sz=0,mag=0;
     if(this.drag){const dx=this.drag.x-this.drag.x0,dy=this.drag.y-this.drag.y0;const len=Math.hypot(dx,dy);if(len>3){const nx=dx/len,nz=-dy/len;const c=Math.cos(cameraYaw),s=Math.sin(cameraYaw);sx=nx*c+nz*s;sz=-nx*s+nz*c;mag=clamp(len/TUNING.touchFollowRadius,0,1);}}
     const left=this.keys.has('a')||this.keys.has('arrowleft'),right=this.keys.has('d')||this.keys.has('arrowright'),up=this.keys.has('w')||this.keys.has('arrowup'),down=this.keys.has('s')||this.keys.has('arrowdown');
-    if(left||right||up||down){const kx=(right?1:0)-(left?1:0),kz=(down?1:0)-(up?1:0),len=Math.hypot(kx,kz)||1,c=Math.cos(cameraYaw),s=Math.sin(cameraYaw);const nx=kx/len,nz=kz/len;sx=nx*c+nz*s;sz=-nx*s+nz*c;mag=this.keys.has('shift')?.45:1;}
+    if(left||right||up||down){const kx=(right?1:0)-(left?1:0),kz=(up?1:0)-(down?1:0),len=Math.hypot(kx,kz)||1,c=Math.cos(cameraYaw),s=Math.sin(cameraYaw);const nx=kx/len,nz=kz/len;sx=nx*c+nz*s;sz=-nx*s+nz*c;mag=this.keys.has('shift')?.45:1;}
     const out={steerDirection:{x:sx,z:sz},steerMagnitude:mag,jump:this.actions.jump,switchCat:this.actions.switchCat,pause:this.actions.pause,device:this.device,drag:this.drag?{x0:this.drag.x0,y0:this.drag.y0,x:this.drag.x,y:this.drag.y}:null};
     this.actions.jump=this.actions.switchCat=this.actions.pause=false; return out;
   }
