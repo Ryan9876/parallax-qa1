@@ -1,0 +1,46 @@
+name: Vendor Henley Voice
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vendor-henley-voice.yml'
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download generated voice lines
+        run: |
+          set -euo pipefail
+          mkdir -p paws-beta-v2-app/public/assets/voice
+          curl -L --fail --retry 3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/be3a78f5-7c9d-4cb0-bd6c-5f2d3bdb69ba.mp3' -o paws-beta-v2-app/public/assets/voice/henley-almost.mp3
+          curl -L --fail --retry 3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/d0196083-ef10-4b4d-b9b2-fe45d7fea5a0.mp3' -o paws-beta-v2-app/public/assets/voice/henley-see-you.mp3
+          curl -L --fail --retry 3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/cc788cca-0c7b-44e1-bf06-878d5c5e84ec.mp3' -o paws-beta-v2-app/public/assets/voice/henley-gotcha.mp3
+          curl -L --fail --retry 3 'https://storage.googleapis.com/adm--audio-playback--7d--public/mcp-preview/be62eadc-f98b-4f44-9b7a-827f15748d53.mp3' -o paws-beta-v2-app/public/assets/voice/henley-nice-try.mp3
+          python - <<'PY'
+          from pathlib import Path
+          files=list(Path('paws-beta-v2-app/public/assets/voice').glob('*.mp3'))
+          assert len(files)==4, files
+          total=0
+          for p in files:
+              data=p.read_bytes()
+              assert len(data)>512, (p,len(data))
+              assert data[:3]==b'ID3' or (data[0]==0xff and data[1]&0xe0==0xe0), p
+              total+=len(data)
+          assert total < 900_000, total
+          print(f'Validated {len(files)} voice lines, {total} bytes')
+          PY
+      - name: Commit voice assets
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add paws-beta-v2-app/public/assets/voice/*.mp3
+          if git diff --cached --quiet; then
+            echo 'Voice assets already vendored.'
+            exit 0
+          fi
+          git commit -m 'Vendor Henley generated voice assets'
+          git push
