@@ -37,7 +37,8 @@ export function assembleLevel(level){
   const pieces=base.map((p,i)=>({id:`${level.id}-p${i}`,kind:p[0],x:p[1],z:p[2],w:p[3],d:p[4],h:p[5],rot:(rng()-.5)*0.08}));
   const colliders=pieces.filter(p=>!['rug','arch','plant','planter','cat-tree'].includes(p.kind)).map(p=>({x:p.x,z:p.z,w:p.w,d:p.d,h:p.h,kind:p.kind}));
   const collectibles=[[-4.5,0],[4.5,0],[-3.6,4.5],[3.6,4.5]].map((p,i)=>({id:`${level.id}-c${i}`,x:p[0]+(rng()-.5)*.4,z:p[1]+(rng()-.5)*.4,pointValue:25}));
-  const catSpawns=level.theme==='sunroom'?[{x:-2.2,z:-4.35},{x:2.2,z:-4.35}]:[{x:-.9,z:-4.35},{x:.9,z:-4.35}];
+  // Keep the opening lane deliberately generous so initial camera-relative steering cannot scrape either counter.
+  const catSpawns=level.theme==='sunroom'?[{x:-2.2,z:-4.35},{x:2.2,z:-4.35}]:[{x:-.55,z:-4.35},{x:.55,z:-4.35}];
   return {pieces,colliders,collectibles,bounds:{minX:-5.8,maxX:5.8,minZ:-5.1,maxZ:6.0},spawn:{cats:catSpawns,henley:{x:0,z:4.65}}};
 }
 
