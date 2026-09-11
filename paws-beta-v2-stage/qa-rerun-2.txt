@@ -1,0 +1,1 @@
+Beta V2 browser QA rerun after vendoring Three.js 0.180.0 and eliminating runtime CDN fetches.
