@@ -26,6 +26,8 @@ jobs:
         run: npm run test:contracts
       - name: Generate assets and build
         run: npm run build
+      - name: Release asset and origin budgets
+        run: npm run test:asset-budget
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Start production preview
