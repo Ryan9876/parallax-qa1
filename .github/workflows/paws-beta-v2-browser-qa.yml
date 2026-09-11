@@ -1,0 +1,47 @@
+name: Paws Beta V2 Browser QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'paws-beta-v2-stage/**'
+      - '.github/scripts/paws-beta-v2-qa.mjs'
+      - '.github/workflows/paws-beta-v2-browser-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paws-beta-v2-browser-qa
+  cancel-in-progress: true
+
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install browser harness
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start staged Beta V2
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory paws-beta-v2-stage > /tmp/paws-beta-v2-server.log 2>&1 &
+          echo $! > /tmp/paws-beta-v2-server.pid
+          sleep 2
+      - name: Exercise desktop and mobile gameplay
+        id: qa
+        run: node .github/scripts/paws-beta-v2-qa.mjs
+      - name: Commit QA evidence
+        if: always()
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add paws-beta-v2-qa-results/report.json paws-beta-v2-qa-results/*.b64 || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Record Paws Beta V2 browser QA"
+            git push
+          fi
