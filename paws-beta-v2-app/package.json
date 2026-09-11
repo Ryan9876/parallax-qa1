@@ -8,6 +8,7 @@
     "vendor:cc0": "node scripts/vendor-cc0-assets.mjs",
     "prepare:assets": "npm run generate:assets && npm run vendor:cc0",
     "test:contracts": "node scripts/contract-tests.mjs",
+    "test:asset-budget": "node scripts/asset-budget.mjs",
     "build": "npm run prepare:assets && vite build",
     "dev": "npm run prepare:assets && vite",
     "preview": "vite preview --host 127.0.0.1 --port 4173"
