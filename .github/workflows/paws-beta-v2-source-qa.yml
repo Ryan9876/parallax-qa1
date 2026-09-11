@@ -37,6 +37,8 @@ jobs:
           sleep 3
       - name: Browser gameplay QA
         run: node scripts/browser-qa.mjs
+      - name: Authored visual and same-origin QA
+        run: node scripts/runtime-origin-qa.mjs
       - name: First-run comprehension QA
         run: node scripts/onboarding-qa.mjs
       - name: Upload rendered QA evidence
