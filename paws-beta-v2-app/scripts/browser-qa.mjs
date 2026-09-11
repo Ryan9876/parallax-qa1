@@ -34,8 +34,13 @@ async function restartClean(page){
   await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing',null,{timeout:4000});
   await page.waitForTimeout(260);
 }
-async function waitForActive(page,value,timeout=900){
-  try{await page.waitForFunction(v=>window.__PAWS_GAME__?.snapshot()?.activeCat===v,value,{timeout});return true;}catch{return false;}
+async function waitForActive(page,value,timeout=1000){
+  const deadline=Date.now()+timeout;
+  while(Date.now()<deadline){
+    if((await snap(page))?.activeCat===value)return true;
+    await page.waitForTimeout(35);
+  }
+  return (await snap(page))?.activeCat===value;
 }
 
 async function desktop(browser){
@@ -67,9 +72,9 @@ async function desktop(browser){
 
   const switch0=await snap(page); const inactive0=1-switch0.activeCat;
   await page.keyboard.press('q'); const switched1=await waitForActive(page,inactive0); const switch1=await snap(page);
-  check(bucket,'Q switch is consumed reliably',switched1&&!switch1.cats[inactive0].captured,`active=${switch1.activeCat}, target=${inactive0}, targetCaptured=${switch1.cats[inactive0].captured}, mode=${switch1.mode}`);
+  check(bucket,'Q switch is consumed reliably',switched1&&switch1.activeCat===inactive0&&!switch1.cats[inactive0].captured,`active=${switch1.activeCat}, target=${inactive0}, targetCaptured=${switch1.cats[inactive0].captured}, mode=${switch1.mode}`);
   await page.keyboard.press('q'); const switched2=await waitForActive(page,switch0.activeCat); const switch2=await snap(page);
-  check(bucket,'second Q switch returns control',switched2,`active=${switch2.activeCat}, expected=${switch0.activeCat}, mode=${switch2.mode}`);
+  check(bucket,'second Q switch returns control',switched2&&switch2.activeCat===switch0.activeCat,`active=${switch2.activeCat}, expected=${switch0.activeCat}, mode=${switch2.mode}`);
 
   const s0=await snap(page), c0={...s0.cats[s0.activeCat]};
   await page.keyboard.down('w'); await page.waitForTimeout(850); await page.keyboard.up('w'); await page.waitForTimeout(120);
@@ -84,12 +89,14 @@ async function desktop(browser){
     if(await page.locator('[data-resume]').isVisible().catch(()=>false)){await page.locator('[data-resume]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.paused===false);}
   }else check(bucket,'pause screen renders',false,`game left playing state early: ${(await snap(page))?.mode}`);
 
+  if((await snap(page))?.mode==='playing')await shot(page,'desktop-03-gameplay.png');
+  else check(bucket,'live gameplay evidence captured',false,`mode=${(await snap(page))?.mode}`);
+
   if((await snap(page))?.mode==='playing'){
     for(let i=0;i<8;i++){await page.keyboard.press(i%2?'Space':'q');await page.keyboard.press(i%2?'d':'a');} await page.waitForTimeout(450);
   }
   check(bucket,'rapid repeated input has no QA errors',(await page.evaluate(()=>window.__PAWS_QA__.errors.length))===0,JSON.stringify(await page.evaluate(()=>window.__PAWS_QA__.errors)));
   check(bucket,'draw calls under budget',(await page.evaluate(()=>window.__PAWS_QA__.drawCalls))<300,`drawCalls=${await page.evaluate(()=>window.__PAWS_QA__.drawCalls)}`);
-  await shot(page,'desktop-03-gameplay.png');
 
   await restartClean(page);
   await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());
