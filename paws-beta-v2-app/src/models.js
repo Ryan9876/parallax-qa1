@@ -51,8 +51,8 @@ function normalizeScene(scene,height,tint){
   scene.position.x-=center.x;scene.position.z-=center.z;scene.position.y-=scaled.min.y;scene.updateMatrixWorld(true);
 }
 function addSockets(group,height){
-  const collar=new THREE.Object3D();collar.name='socket_collar';collar.position.set(0,height*.64,-height*.22);group.add(collar);
-  const head=new THREE.Object3D();head.name='socket_head';head.position.set(0,height*.82,-height*.34);group.add(head);
+  const collar=new THREE.Object3D();collar.name='socket_collar';collar.position.set(0,height*.72,height*.27);collar.rotation.x=-.16;collar.scale.setScalar(.72);group.add(collar);
+  const head=new THREE.Object3D();head.name='socket_head';head.position.set(0,height*.86,height*.38);group.add(head);
 }
 
 export class CharacterModel{

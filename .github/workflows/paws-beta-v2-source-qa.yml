@@ -8,6 +8,9 @@ on:
       - '.github/workflows/paws-beta-v2-source-qa.yml'
 permissions:
   contents: read
+concurrency:
+  group: paws-beta-v2-source-qa-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   source-qa:
     runs-on: ubuntu-latest
