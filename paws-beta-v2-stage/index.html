@@ -41,7 +41,7 @@
 }
 </script>
   <script type="module">
-const chunkUrls=['https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-0.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-1.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-2.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-3.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-4.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-5.txt','https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/chunk-6.txt'];
+const chunkUrls=['chunk-0.txt','chunk-1.txt','chunk-2.txt','chunk-3.txt','chunk-4.txt','chunk-5.txt','chunk-6.txt'];
 const compressed=(await Promise.all(chunkUrls.map(async u=>{const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('Deployment chunk failed '+r.status);return r.text()}))).join('');
 const bytes=Uint8Array.from(atob(compressed),c=>c.charCodeAt(0));
 if (!("DecompressionStream" in globalThis)) throw new Error("This browser does not support the Beta V2 deployment loader.");
