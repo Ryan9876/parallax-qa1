@@ -1,0 +1,20 @@
+{
+  "name": "paws-on-the-run-beta-v2",
+  "private": true,
+  "version": "1.0.0-beta.2",
+  "type": "module",
+  "scripts": {
+    "generate:assets": "node scripts/generate-assets.mjs",
+    "test:contracts": "node scripts/contract-tests.mjs",
+    "build": "npm run generate:assets && vite build",
+    "dev": "npm run generate:assets && vite",
+    "preview": "vite preview --host 127.0.0.1 --port 4173"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "vite": "7.1.5",
+    "playwright": "1.55.0"
+  }
+}

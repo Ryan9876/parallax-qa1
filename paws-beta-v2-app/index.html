@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#161b18" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Paws on the Run — Beta V2</title>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="Paws on the Run game view"></canvas>
+    <div id="hud" class="hud hidden" aria-live="polite">
+      <section class="hud-card objective"><span id="cat-dot" class="cat-dot"></span><div><b id="objective-name">Find the clue</b><small id="objective-detail">Orange · 12.0s</small></div></section>
+      <section class="hud-card score"><b id="score">0</b><small id="combo">x1 combo</small></section>
+      <section class="hud-card stars" id="stars">☆ ☆ ☆</section>
+      <button id="pause-button" class="pause-button" aria-label="Pause">II</button>
+    </div>
+    <div id="henley-indicator" class="henley-indicator hidden">HENLEY</div>
+    <div id="drag-ripple" class="drag-ripple hidden"></div>
+    <div id="toast" class="toast hidden"></div>
+    <div id="screen-root" class="screen-root"></div>
+    <div id="pause-banner" class="pause-banner hidden"><b>Paused</b><span id="pause-reason">Tap Resume when ready.</span></div>
+    <div id="build" class="build"></div>
+    <button id="qa-indicator" class="qa-indicator hidden" aria-label="QA status">QA</button>
+    <pre id="qa-panel" class="qa-panel hidden"></pre>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
