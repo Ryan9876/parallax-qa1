@@ -11,31 +11,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Decompress staged game bundle
-        run: |
-          cat paws-beta-v2-stage/chunk-{0..6}.txt | base64 -d | gzip -dc > /tmp/paws-beta-v2-source.js
-          wc -c /tmp/paws-beta-v2-source.js
-      - name: Report imports and asset/network references
+      - name: Inspect staged encoding
         run: |
           python3 - <<'PY'
-          import re
+          import base64,gzip,zlib
           from pathlib import Path
-          s=Path('/tmp/paws-beta-v2-source.js').read_text(errors='replace')
-          pats={
-            'imports': r'(?:from\s*["\'][^"\']+["\']|import\s*\(["\'][^"\']+["\']\))',
-            'urls': r'https?://[^"\'\s)]+',
-            'fetches': r'fetch\s*\([^)]{0,220}\)',
-            'assets': r'["\'][^"\']+\.(?:glb|gltf|bin|png|jpg|jpeg|webp|ktx2|hdr|wav|mp3|ogg|m4a|json)[^"\']*["\']',
-          }
-          for name,pat in pats.items():
-            print(f'\n=== {name.upper()} ===')
-            vals=[]
-            for m in re.finditer(pat,s,re.I):
-              v=m.group(0)
-              if v not in vals: vals.append(v)
-            for v in vals[:250]: print(v[:500])
-            print('COUNT',len(vals))
-          print('\n=== FETCH CONTEXTS ===')
-          for m in re.finditer(r'fetch',s):
-            print(s[max(0,m.start()-180):m.start()+400].replace('\n',' ')[:650])
+          parts=[]
+          for i in range(7):
+            s=Path(f'paws-beta-v2-stage/chunk-{i}.txt').read_text().strip()
+            parts.append(s)
+            print(f'chunk {i}: chars={len(s)} prefix={s[:16]!r} suffix={s[-16:]!r} padding={s.count("=")}')
+            try:
+              b=base64.b64decode(s,validate=True)
+              print(f'  individual decoded={len(b)} first={b[:12].hex()} last={b[-12:].hex()}')
+            except Exception as e: print('  individual decode error',repr(e))
+          joined=''.join(parts)
+          print('joined chars',len(joined),'mod4',len(joined)%4,'padding',joined.count('='))
+          b=base64.b64decode(joined,validate=True)
+          print('joined decoded',len(b),'first',b[:24].hex(),'last',b[-24:].hex())
+          for name,fn in [('gzip',gzip.decompress),('zlib',zlib.decompress)]:
+            try:
+              out=fn(b)
+              print(name,'SUCCESS bytes',len(out),'head',out[:160])
+            except Exception as e: print(name,'ERROR',repr(e))
+          # Also test concatenating independently-decoded chunks.
+          try:
+            bb=b''.join(base64.b64decode(x) for x in parts)
+            print('piecewise decoded',len(bb),'first',bb[:24].hex(),'last',bb[-24:].hex())
+            for name,fn in [('piecewise-gzip',gzip.decompress),('piecewise-zlib',zlib.decompress)]:
+              try:
+                out=fn(bb)
+                print(name,'SUCCESS bytes',len(out),'head',out[:160])
+              except Exception as e: print(name,'ERROR',repr(e))
+          except Exception as e: print('piecewise ERROR',repr(e))
           PY
