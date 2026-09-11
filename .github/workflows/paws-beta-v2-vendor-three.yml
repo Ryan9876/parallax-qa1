@@ -1,0 +1,43 @@
+name: Vendor Three.js for Paws Beta V2
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/paws-beta-v2-vendor-three.yml'
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Three.js
+        run: npm install --no-save three@0.180.0
+      - name: Vendor runtime and patch import map
+        run: |
+          rm -rf paws-beta-v2-stage/vendor
+          mkdir -p paws-beta-v2-stage/vendor
+          cp node_modules/three/build/three.module.js paws-beta-v2-stage/vendor/three.module.js
+          cp -R node_modules/three/examples/jsm paws-beta-v2-stage/vendor/jsm
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('paws-beta-v2-stage/index.html')
+          s=p.read_text()
+          s=s.replace('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js','./vendor/three.module.js')
+          s=s.replace('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/','./vendor/jsm/')
+          p.write_text(s)
+          PY
+      - name: Verify stage has no remote loader origins
+        run: |
+          ! grep -q 'raw.githubusercontent.com' paws-beta-v2-stage/index.html
+          ! grep -q 'cdn.jsdelivr.net' paws-beta-v2-stage/index.html
+          test -f paws-beta-v2-stage/vendor/three.module.js
+      - name: Commit vendored runtime
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add paws-beta-v2-stage/index.html paws-beta-v2-stage/vendor
+          if ! git diff --cached --quiet; then
+            git commit -m "Vendor Three.js 0.180.0 for Beta V2"
+            git push
+          fi
