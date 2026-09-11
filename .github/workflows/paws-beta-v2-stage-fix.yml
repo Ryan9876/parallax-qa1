@@ -1,0 +1,32 @@
+name: Fix Paws Beta V2 Stage Loader
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/paws-beta-v2-stage-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make deployment chunks same-origin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('paws-beta-v2-stage/index.html')
+          s=p.read_text()
+          base='https://raw.githubusercontent.com/Ryan9876/parallax-qa1/main/paws-beta-v2-stage/'
+          s=s.replace(base, '')
+          p.write_text(s)
+          PY
+      - name: Commit loader fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add paws-beta-v2-stage/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Fix Beta V2 staging loader chunk paths"
+            git push
+          fi
