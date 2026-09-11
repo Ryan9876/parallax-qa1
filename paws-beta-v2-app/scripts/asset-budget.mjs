@@ -33,6 +33,15 @@ for(const asset of [characters.cat,characters.henley].filter(Boolean)){
   assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/characters/authored/'),`${asset.assetId||'character'} missing authored local path`);
   if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing authored character ${asset.local}`);}
 }
+const sampled=provenance.sampledAudio||{};
+assert(Array.isArray(sampled.samples)&&sampled.samples.length>=10,'sampled audio provenance requires the gameplay sample set');
+for(const asset of sampled.samples||[]){
+  assert(String(asset.license||'').toUpperCase().includes('CC0'),`${asset.file||'audio'} is not CC0`);
+  assert(asset.creator==='Joseph SARDIN',`${asset.file||'audio'} creator provenance missing`);
+  assert(typeof asset.page==='string'&&asset.page.startsWith('https://bigsoundbank.com/'),`${asset.file||'audio'} source page missing`);
+  assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/audio/'),`${asset.file||'audio'} local path missing`);
+  if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing sampled audio ${asset.local}`);}
+}
 
 const characterFiles=[...walk(path.join(publicAssets,'models')),...walk(path.join(publicAssets,'characters','authored'))];
 const environmentFiles=walk(path.join(publicAssets,'cc0','furniture'));
@@ -56,5 +65,5 @@ const codeBytes=bytes(codeFiles);
 assert(codeBytes<=1*MiB,`code and UI ${fmt(codeBytes)} exceed 1 MiB`);
 
 console.log(`Asset budget: total ${fmt(distBytes)}/15; characters ${fmt(characterBytes)}/4; environment ${fmt(environmentBytes)}/3; textures ${fmt(textureBytes)}/4; HDRI ${fmt(hdriBytes)}/1; audio ${fmt(audioBytes)}/2; code ${fmt(codeBytes)}/1.`);
-console.log(`CC0 environment: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}. Authored characters: ${characters.cat?.creator||'missing'} cat / ${characters.henley?.creator||'missing'} Henley.`);
+console.log(`CC0 environment: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}. Authored characters: ${characters.cat?.creator||'missing'} cat / ${characters.henley?.creator||'missing'} Henley. Sampled audio: ${(sampled.samples||[]).length} CC0 files.`);
 if(failures.length){for(const failure of failures)console.error(`FAIL ${failure}`);process.exit(1);}console.log('PASS release asset category budgets and provenance');
