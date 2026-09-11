@@ -44,11 +44,20 @@ try{
 
     await page.evaluate(()=>window.__POTR_QA__.prepareInactiveCapture());
     try{await page.waitForFunction(()=>window.__POTR_QA__.autonomousPenalty.active===true,null,{timeout:2400});}catch{}
-    const penalty=await page.evaluate(()=>({penalty:window.__POTR_QA__.autonomousPenalty,mode:window.__PAWS_QA__.mode,kind:document.querySelector('#first-run-guide')?.dataset.kind}));
+    const penalty=await page.evaluate(()=>({penalty:window.__POTR_QA__.autonomousPenalty,mode:window.__PAWS_QA__.mode,kind:document.querySelector('#first-run-guide')?.dataset.kind,sim:window.__POTR_QA__.simulationTime}));
     check('inactive-cat capture is nonterminal',penalty.penalty.active&&penalty.mode==='playing',JSON.stringify(penalty));
     check('first autonomous capture visually communicates return',penalty.kind==='return',penalty.kind);await shot(page,'desktop-05-return.png');
-    try{await page.waitForFunction(()=>window.__POTR_QA__.autonomousPenalty.active===false,null,{timeout:6500});}catch{}
-    check('captured teammate returns while run continues',!(await page.evaluate(()=>window.__POTR_QA__.autonomousPenalty.active))&&(await page.evaluate(()=>window.__PAWS_QA__.mode))==='playing');
+
+    const evade=await page.evaluate(()=>{const s=window.__PAWS_GAME__.snapshot(),c=s.cats[s.activeCat],h=s.henley,y=window.__POTR_QA__.cameraYaw,vx=c.x-h.x,vz=c.z-h.z,l=Math.hypot(vx,vz)||1,wx=vx/l,wz=vz/l,cy=Math.cos(y),sy=Math.sin(y),nx=wx*cy-wz*sy,nz=wx*sy+wz*cy,keys=[];if(nx>.18)keys.push('d');else if(nx<-.18)keys.push('a');if(nz>.18)keys.push('w');else if(nz<-.18)keys.push('s');return{keys,world:{x:wx,z:wz},cameraYaw:y};});
+    for(const key of evade.keys)await page.keyboard.down(key);
+    try{await page.waitForFunction(()=>window.__POTR_QA__.autonomousPenalty.active===false||window.__PAWS_QA__.mode!=='playing',null,{timeout:6500});}catch{}
+    for(const key of evade.keys)await page.keyboard.up(key);
+    const returned=await page.evaluate(()=>({penalty:window.__POTR_QA__.autonomousPenalty,mode:window.__PAWS_QA__.mode,sim:window.__POTR_QA__.simulationTime,lastReturnDistance:window.__POTR_QA__.lastReturnDistance,requiredDetection:window.__POTR_QA__.requiredDetection}));
+    const penaltyElapsed=returned.sim-penalty.sim;
+    check('captured teammate returns while active cat evades',!returned.penalty.active&&returned.mode==='playing',JSON.stringify({returned,evade}));
+    check('Kitten autonomous penalty duration remains exact',Math.abs(penaltyElapsed-penalty.penalty.remaining)<.45,`remaining=${penalty.penalty.remaining.toFixed(2)}, elapsed=${penaltyElapsed.toFixed(2)}`);
+    check('teammate returns at least D from Henley',returned.lastReturnDistance+0.01>=returned.requiredDetection,`return=${returned.lastReturnDistance.toFixed(2)}, D=${returned.requiredDetection.toFixed(2)}`);
+    await shot(page,'desktop-06-returned.png');
     await context.close();
   }
   {
