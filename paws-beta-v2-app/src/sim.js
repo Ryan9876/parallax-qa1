@@ -14,7 +14,7 @@ function armVault(cat,c,axis,delta){if(!VAULTABLE_KINDS.has(c.kind)||c.h>1.12||c
 export function createRunState(level,world,difficulty='kitten'){
   const resolvedDifficulty=DIFFICULTIES[difficulty]?difficulty:'kitten';
   const cats=world.spawn.cats.map((s,i)=>({name:i===0?'orange':'gray',x:s.x,z:s.z,y:0,vx:0,vz:0,vy:0,heading:0,grounded:true,captured:false,returnTimer:0,lastAnim:'idle',vaultWindow:0,vaultX:0,vaultZ:0,vaultY:0,vaultAnim:0,landTimer:0}));
-  return {mode:'playing',paused:false,pauseReason:'',levelId:level.id,difficulty:resolvedDifficulty,elapsed:0,activeCat:0,activeTime:[0,0],cats,henley:{x:world.spawn.henley.x,z:world.spawn.henley.z,y:0,heading:Math.PI,state:'search',timer:0,target:0,lockedHeading:0,minAttemptDistance:999,catchTimer:0,distractionTimer:0},objectiveIndex:0,objectiveTime:objectiveDeadline(level,0,resolvedDifficulty),objectiveCatOverride:null,objectiveTimerPaused:false,objectivePauseReason:null,henleyPaused:false,onboardingPhase:null,objectiveMisses:0,score:0,streak:0,combo:1,pillars:{objective:0,collectible:0,evasion:0,switch:0},collected:new Set(),lastSwitch:-99,switchBonusObjectives:new Set(),nearMisses:0,autonomousCaptures:0,successStars:0,tagTeam:false};
+  return {mode:'playing',paused:false,pauseReason:'',levelId:level.id,difficulty:resolvedDifficulty,elapsed:0,activeCat:0,activeTime:[0,0],cats,henley:{x:world.spawn.henley.x,z:world.spawn.henley.z,y:0,heading:Math.PI,state:'search',timer:0,target:0,lockedHeading:0,minAttemptDistance:999,catchTimer:0,distractionTimer:0},objectiveIndex:0,objectiveTime:objectiveDeadline(level,0,resolvedDifficulty),objectiveCatOverride:null,objectiveTimerPaused:false,objectivePauseReason:null,henleyPaused:false,onboardingPhase:null,objectiveMisses:0,score:0,streak:0,combo:1,pillars:{objective:0,collectible:0,evasion:0,switch:0},collected:new Set(),lastSwitch:-99,switchBonusObjectives:new Set(),nearMisses:0,autonomousCaptures:0,successStars:0,tagTeam:false,lastReturnDistance:null};
 }
 
 function resolveMove(cat,world,dx,dz){
@@ -37,13 +37,36 @@ function updateVertical(cat,actions,dt,world){
   return event;
 }
 function findSafeReturnPoint(state,world,active){
-  const minHenleyDistance=detectionRadius(state.elapsed,state.difficulty)+.15;let best=null;
-  for(let x=world.bounds.minX+.65;x<=world.bounds.maxX-.65;x+=.55){for(let z=world.bounds.minZ+.65;z<=world.bounds.maxZ-.65;z+=.55){if(!isFree(world,x,z,.42))continue;const henleyDistance=Math.hypot(x-state.henley.x,z-state.henley.z);if(henleyDistance<minHenleyDistance)continue;const activeDistance=Math.hypot(x-active.x,z-active.z);if(!best||activeDistance<best.activeDistance)best={x,z,activeDistance,henleyDistance};}}
-  return best;
+  const required=detectionRadius(state.elapsed,state.difficulty),margin=.15,targetDistance=required+margin;let preferred=null,farthest=null;
+  for(let x=world.bounds.minX+.65;x<=world.bounds.maxX-.65;x+=.55){for(let z=world.bounds.minZ+.65;z<=world.bounds.maxZ-.65;z+=.55){
+    if(!isFree(world,x,z,.42))continue;
+    const henleyDistance=Math.hypot(x-state.henley.x,z-state.henley.z),activeDistance=Math.hypot(x-active.x,z-active.z),candidate={x,z,activeDistance,henleyDistance};
+    if(!farthest||candidate.henleyDistance>farthest.henleyDistance)farthest=candidate;
+    if(candidate.henleyDistance>=targetDistance&&(!preferred||candidate.activeDistance<preferred.activeDistance))preferred=candidate;
+  }}
+  if(preferred)return preferred;
+  if(!farthest)return null;
+
+  // Small rooms can temporarily have no point D away when Henley is near the centre.
+  // The penalty contract still requires an immediate safe return, so reset Henley to the
+  // least disruptive valid side of the room and briefly distract him before re-entry.
+  const h=state.henley,dx=h.x-farthest.x,dz=h.z-farthest.z,len=Math.hypot(dx,dz)||1,needed=Math.max(0,targetDistance-farthest.henleyDistance);
+  let hx=clamp(h.x+dx/len*needed,world.bounds.minX+.3,world.bounds.maxX-.3),hz=clamp(h.z+dz/len*needed,world.bounds.minZ+.3,world.bounds.maxZ-.3),separation=Math.hypot(farthest.x-hx,farthest.z-hz);
+  if(separation<targetDistance){
+    const anchors=[
+      {x:world.bounds.minX+.3,z:world.bounds.minZ+.3},{x:world.bounds.minX+.3,z:world.bounds.maxZ-.3},
+      {x:world.bounds.maxX-.3,z:world.bounds.minZ+.3},{x:world.bounds.maxX-.3,z:world.bounds.maxZ-.3}
+    ].sort((a,b)=>Math.hypot(farthest.x-b.x,farthest.z-b.z)-Math.hypot(farthest.x-a.x,farthest.z-a.z));
+    hx=anchors[0].x;hz=anchors[0].z;separation=Math.hypot(farthest.x-hx,farthest.z-hz);
+  }
+  if(separation<required)return null;
+  h.x=hx;h.z=hz;h.state='distracted';h.distractionTimer=Math.max(h.distractionTimer,.85);h.catchTimer=0;h.minAttemptDistance=999;h.heading=Math.atan2(active.x-h.x,active.z-h.z);
+  farthest.henleyDistance=separation;
+  return farthest;
 }
 function updateAutonomous(state,world,dt){
   const active=state.cats[state.activeCat],idx=1-state.activeCat,cat=state.cats[idx];
-  if(cat.captured){cat.returnTimer-=dt;if(cat.returnTimer<=0){const returnPoint=findSafeReturnPoint(state,world,active);if(!returnPoint){cat.returnTimer=.25;return null;}cat.captured=false;cat.x=returnPoint.x;cat.z=returnPoint.z;cat.y=0;cat.vx=cat.vz=cat.vy=0;cat.grounded=true;cat.vaultWindow=0;return{type:'returned',cat};}return null;}
+  if(cat.captured){cat.returnTimer-=dt;if(cat.returnTimer<=0){const returnPoint=findSafeReturnPoint(state,world,active);if(!returnPoint){cat.returnTimer=.1;return null;}cat.captured=false;cat.x=returnPoint.x;cat.z=returnPoint.z;cat.y=0;cat.vx=cat.vz=cat.vy=0;cat.grounded=true;cat.vaultWindow=0;state.lastReturnDistance=returnPoint.henleyDistance;return{type:'returned',cat};}return null;}
   const side=idx===0?-1:1,target={x:active.x+Math.cos(active.heading)*side*1.3-Math.sin(active.heading)*1.15,z:active.z-Math.sin(active.heading)*side*1.3-Math.cos(active.heading)*1.15};const dx=target.x-cat.x,dz=target.z-cat.z,l=Math.hypot(dx,dz);const mag=l>.55?clamp(l/2,0,.72):0;steerCat(cat,{x:dx,z:dz},mag,dt,world);const vertical=updateVertical(cat,{jump:false},dt,world);return vertical==='land'?{type:'autonomousLand',cat}:null;
 }
 function activeCanReachObjective(state,level,world){const o=level.objectives[state.objectiveIndex],active=state.cats[state.activeCat];return !!o&&!active.captured&&isFree(world,o.x,o.z,.32)&&Math.hypot(active.x-o.x,active.z-o.z)<18;}
