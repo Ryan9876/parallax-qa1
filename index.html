@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A private, browser-persistent decision ledger.">
+  <title>Decision Ledger</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top" aria-label="Decision Ledger home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span>Decision Ledger</span>
+      </a>
+      <p class="privacy-note"><span aria-hidden="true">▣</span> Private to this browser</p>
+    </div>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Clarity for what comes next</p>
+        <h1 id="page-title">Decisions, made visible.</h1>
+        <p class="lead">Capture the context behind important choices, keep your team aligned, and make the past useful.</p>
+      </div>
+      <button class="button button-primary" id="newDecision" type="button"><span aria-hidden="true">＋</span> New decision</button>
+    </section>
+
+    <section class="toolbar" aria-label="Find and organize decisions">
+      <div class="search-wrap">
+        <label class="sr-only" for="search">Search decisions</label>
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input id="search" type="search" placeholder="Search decisions..." autocomplete="off">
+      </div>
+      <label class="sr-only" for="statusFilter">Filter by status</label>
+      <select id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="Proposed">Proposed</option>
+        <option value="Accepted">Accepted</option>
+        <option value="Superseded">Superseded</option>
+      </select>
+      <label class="sr-only" for="tagFilter">Filter by tag</label>
+      <select id="tagFilter"><option value="all">All tags</option></select>
+      <label class="sr-only" for="sortOrder">Sort decisions</label>
+      <select id="sortOrder">
+        <option value="updated">Recently updated</option>
+        <option value="date">Decision date</option>
+        <option value="title">Title A–Z</option>
+      </select>
+    </section>
+
+    <section class="summary" aria-live="polite">
+      <strong id="resultCount">0 decisions</strong>
+      <span id="resultHint">Your ledger is ready when you are.</span>
+    </section>
+    <section id="decisionList" class="decision-grid" aria-label="Decision records"></section>
+    <section id="emptyState" class="empty-state" hidden>
+      <div class="empty-icon" aria-hidden="true">✧</div>
+      <h2 id="emptyTitle">No decisions yet</h2>
+      <p id="emptyText">Start a record to preserve the thinking behind your next important choice.</p>
+      <button class="button button-primary" id="emptyAction" type="button">Create your first decision</button>
+    </section>
+
+    <section class="data-tools" aria-labelledby="data-title">
+      <div><p class="eyebrow">Your data</p><h2 id="data-title">Take it with you</h2><p>Export a backup or restore an earlier ledger. Data stays in this browser.</p></div>
+      <div class="tool-actions">
+        <button class="button button-secondary" id="exportData" type="button">Export JSON</button>
+        <button class="button button-secondary" id="importData" type="button">Import JSON</button>
+        <input id="fileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="editorDialog" aria-labelledby="dialogTitle">
+    <form id="decisionForm" method="dialog" novalidate>
+      <div class="dialog-header"><div><p class="eyebrow">Decision record</p><h2 id="dialogTitle">New decision</h2></div><button class="icon-button" id="closeDialog" type="button" aria-label="Close editor">×</button></div>
+      <div id="formError" class="form-error" role="alert" hidden></div>
+      <div class="form-grid">
+        <div class="field field-wide"><label for="title">Title <span aria-hidden="true">*</span></label><input id="title" name="title" required maxlength="120" placeholder="e.g. Choose a modular architecture"><small class="field-error" data-error="title"></small></div>
+        <div class="field"><label for="status">Status</label><select id="status" name="status"><option>Proposed</option><option>Accepted</option><option>Superseded</option></select></div>
+        <div class="field"><label for="decisionDate">Decision date</label><input id="decisionDate" name="decisionDate" type="date"></div>
+        <div class="field"><label for="owner">Owner</label><input id="owner" name="owner" maxlength="80" placeholder="Person or team"></div>
+        <div class="field field-wide"><label for="tags">Tags</label><input id="tags" name="tags" maxlength="160" placeholder="product, architecture (comma separated)"></div>
+        <div class="field field-wide"><label for="context">Context</label><textarea id="context" name="context" rows="3" placeholder="What prompted this decision?"></textarea></div>
+        <div class="field field-wide"><label for="finalDecision">Final decision</label><textarea id="finalDecision" name="finalDecision" rows="3" placeholder="What did you decide, and why?"></textarea></div>
+        <div class="field field-wide"><label for="options">Options considered</label><textarea id="options" name="options" rows="3" placeholder="What alternatives were explored?"></textarea></div>
+      </div>
+      <div class="dialog-actions"><button class="button button-secondary" id="cancelDialog" type="button">Cancel</button><button class="button button-primary" type="submit">Save decision</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
