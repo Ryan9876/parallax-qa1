@@ -1,0 +1,44 @@
+name: Paws Beta V2 Source QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'paws-beta-v2-app/**'
+      - '.github/workflows/paws-beta-v2-source-qa.yml'
+permissions:
+  contents: read
+jobs:
+  source-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: paws-beta-v2-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Contract tests
+        run: npm run test:contracts
+      - name: Generate assets and build
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          npm run preview > /tmp/paws-preview.log 2>&1 &
+          echo $! > /tmp/paws-preview.pid
+          sleep 3
+      - name: Browser gameplay QA
+        run: node scripts/browser-qa.mjs
+      - name: Upload rendered QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paws-beta-v2-qa-evidence
+          path: paws-beta-v2-app/qa-results
+          if-no-files-found: warn
