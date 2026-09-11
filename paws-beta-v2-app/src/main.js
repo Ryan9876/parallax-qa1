@@ -21,6 +21,7 @@ function recordRuntimeError(kind,error){
     simulationTime:Number(s?.elapsed||0),
   });
 }
+function modelSummary(model){return model?{failed:!!model.failed,species:model.species||'unknown',clips:[...(model.availableClips||[])],current:model.currentName||'',collar:!!model.group?.getObjectByName('socket_collar'),head:!!model.group?.getObjectByName('socket_head')}:null;}
 
 const qaSurface={
   schemaVersion:QA_SCHEMA_VERSION,
@@ -39,6 +40,7 @@ const qaSurface={
   get requiredDetection(){const s=runSnapshot();return s?detectionRadius(s.elapsed,s.difficulty):0;},
   get lastReturnDistance(){return Number(runSnapshot()?.lastReturnDistance||0);},
   get visualAssets(){return{sofa:!!game.view.assets?.sofa,coffee:!!game.view.assets?.coffee,environment:!!game.view.scene.environment,contactShadows:Number(game.view.contactShadows?.length||0),errors:[...(game.view.assetErrors||[])]};},
+  get characterAssets(){return{ready:!!game.modelReady,cats:game.models.map(modelSummary),henley:modelSummary(game.henleyModel)};},
   prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},
 };
 window.__POTR_QA__=qaSurface;
