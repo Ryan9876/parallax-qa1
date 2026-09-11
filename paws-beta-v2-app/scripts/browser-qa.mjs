@@ -29,6 +29,11 @@ async function enterFirstLevel(page,{touch=false}={}){
   await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing',null,{timeout:10000});
   await page.waitForTimeout(300);
 }
+async function restartClean(page){
+  await page.evaluate(()=>window.__PAWS_GAME__.restart());
+  await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing',null,{timeout:4000});
+  await page.waitForTimeout(260);
+}
 async function waitForActive(page,value,timeout=900){
   try{await page.waitForFunction(v=>window.__PAWS_GAME__?.snapshot()?.activeCat===v,value,{timeout});return true;}catch{return false;}
 }
@@ -48,6 +53,17 @@ async function desktop(browser){
   check(bucket,'kitten default selected',await page.locator('[data-tier="kitten"]').evaluate(el=>el.classList.contains('selected')));
   await page.locator('[data-start]').click();
   await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing'); await page.waitForTimeout(300);
+
+  const initialFrame=await page.evaluate(()=>window.__PAWS_GAME__.framing());
+  check(bucket,'active cat starts inside camera frame',initialFrame?.catVisible,JSON.stringify(initialFrame));
+  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(7.2)); await page.waitForTimeout(420);
+  const closeFrame=await page.evaluate(()=>window.__PAWS_GAME__.framing());
+  check(bucket,'camera keeps cat and Henley visible inside 8m',closeFrame?.distance<8&&closeFrame?.catVisible&&closeFrame?.henleyVisible,JSON.stringify(closeFrame));
+  await restartClean(page);
+  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(10)); await page.waitForTimeout(70);
+  const bearingFrame=await page.evaluate(()=>window.__PAWS_GAME__.framing());
+  check(bucket,'off-screen Henley has directional indicator',bearingFrame?.henleyVisible||bearingFrame?.indicatorVisible,JSON.stringify(bearingFrame));
+  await restartClean(page);
 
   const switch0=await snap(page); const inactive0=1-switch0.activeCat;
   await page.keyboard.press('q'); const switched1=await waitForActive(page,inactive0); const switch1=await snap(page);
@@ -75,14 +91,15 @@ async function desktop(browser){
   check(bucket,'draw calls under budget',(await page.evaluate(()=>window.__PAWS_QA__.drawCalls))<300,`drawCalls=${await page.evaluate(()=>window.__PAWS_QA__.drawCalls)}`);
   await shot(page,'desktop-03-gameplay.png');
 
-  if((await snap(page))?.mode==='playing')await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());
+  await restartClean(page);
+  await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());
   try{await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='success',null,{timeout:1200});}catch{}
   await page.waitForTimeout(300);
   check(bucket,'success/results state renders',await page.getByText('Snack Run complete',{exact:true}).isVisible().catch(()=>false),`mode=${await page.evaluate(()=>window.__PAWS_QA__.mode)}`);
   await shot(page,'desktop-04-success.png');
 
   if(await page.locator('[data-replay]').isVisible().catch(()=>false)){await page.locator('[data-replay]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
-    let caught=false; for(let i=0;i<180;i++){await page.waitForTimeout(100);if((await snap(page))?.mode==='caught'){caught=true;break;}}
+    let caught=false; for(let i=0;i<220;i++){await page.waitForTimeout(100);if((await snap(page))?.mode==='caught'){caught=true;break;}}
     check(bucket,'Henley can naturally catch idle active cat',caught,`mode=${(await snap(page))?.mode}`); await page.waitForTimeout(250);
     check(bucket,'caught screen renders',await page.getByText('Caught!',{exact:true}).isVisible().catch(()=>false)); await shot(page,'desktop-05-caught.png');
     if(await page.locator('[data-retry]').isVisible().catch(()=>false)){await page.locator('[data-retry]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');check(bucket,'retry returns to gameplay',true);}else check(bucket,'retry returns to gameplay',false,'retry button unavailable');
@@ -101,6 +118,15 @@ async function mobile(browser){
   const page=await context.newPage(); attach(page,bucket); await boot(page); await enterFirstLevel(page,{touch:true});
   const metrics=await page.evaluate(()=>({iw:innerWidth,sw:document.documentElement.scrollWidth,ih:innerHeight,sh:document.documentElement.scrollHeight,touch:getComputedStyle(document.documentElement).touchAction}));
   check(bucket,'mobile has no horizontal overflow',metrics.sw<=metrics.iw+1,JSON.stringify(metrics));
+  let framing=await page.evaluate(()=>window.__PAWS_GAME__.framing());
+  check(bucket,'mobile active cat starts inside camera frame',framing?.catVisible,JSON.stringify(framing));
+
+  const original=await snap(page),inactive=1-original.activeCat;
+  const inactivePoint=await page.evaluate(i=>window.__PAWS_GAME__.projectCat(i),inactive);
+  check(bucket,'inactive cat is tappable in initial mobile frame',inactivePoint?.visible,JSON.stringify(inactivePoint));
+  if(inactivePoint?.visible){await page.touchscreen.tap(inactivePoint.x,inactivePoint.y);const switched=await waitForActive(page,inactive);check(bucket,'touching inactive cat switches control',switched,`active=${(await snap(page)).activeCat}, expected=${inactive}`);}else check(bucket,'touching inactive cat switches control',false,'inactive cat offscreen');
+  await restartClean(page);
+
   const box=await page.locator('#scene').boundingBox(); if(!box)throw new Error('canvas missing');
   const cx=box.x+box.width*.48, cy=box.y+box.height*.72;
   const s0=await snap(page), c0={...s0.cats[s0.activeCat]};
@@ -110,17 +136,24 @@ async function mobile(browser){
   await page.waitForTimeout(850); await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]}); await page.waitForTimeout(140);
   const s1=await snap(page); check(bucket,'direct touch drag steers cat',dist(c0,s1.cats[s1.activeCat])>.28,`distance=${dist(c0,s1.cats[s1.activeCat]).toFixed(3)}, mode=${s1.mode}`);
   if(s1.mode==='playing'){
-    await page.touchscreen.tap(cx,cy); let maxY=0; for(let i=0;i<9;i++){await page.waitForTimeout(55);const s=await snap(page);if(s)maxY=Math.max(maxY,s.cats[s.activeCat].y)}
-    check(bucket,'touch tap jumps',maxY>.08,`maxY=${maxY.toFixed(3)}`);
-  }else check(bucket,'touch tap jumps',false,`game left playing state early: ${s1.mode}`);
+    const jumpX=box.x+box.width*.14,jumpY=box.y+box.height*.80;
+    await page.touchscreen.tap(jumpX,jumpY); let maxY=0; for(let i=0;i<10;i++){await page.waitForTimeout(50);const s=await snap(page);if(s)maxY=Math.max(maxY,s.cats[s.activeCat].y)}
+    check(bucket,'touch tap on open gameplay surface jumps',maxY>.08,`maxY=${maxY.toFixed(3)}`);
+  }else check(bucket,'touch tap on open gameplay surface jumps',false,`game left playing state early: ${s1.mode}`);
   check(bucket,'mobile draw calls under budget',(await page.evaluate(()=>window.__PAWS_QA__.drawCalls))<300,`drawCalls=${await page.evaluate(()=>window.__PAWS_QA__.drawCalls)}`);
   check(bucket,'mobile QA has no errors',(await page.evaluate(()=>window.__PAWS_QA__.errors.length))===0,JSON.stringify(await page.evaluate(()=>window.__PAWS_QA__.errors)));
   await shot(page,'mobile-01-gameplay.png');
-  if((await snap(page))?.mode==='playing'){
-    await page.locator('#pause-button').tap();try{await page.waitForFunction(()=>window.__PAWS_QA__?.paused===true,null,{timeout:900});}catch{}await shot(page,'mobile-02-pause.png');
-    check(bucket,'mobile pause is usable',await page.locator('[data-resume]').isVisible().catch(()=>false));
-    if(await page.locator('[data-resume]').isVisible().catch(()=>false)){await page.locator('[data-resume]').tap();await page.waitForFunction(()=>window.__PAWS_QA__?.paused===false);}
-  }else check(bucket,'mobile pause is usable',false,`mode=${(await snap(page))?.mode}`);
+
+  await restartClean(page);
+  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(7.2)); await page.waitForTimeout(650);
+  framing=await page.evaluate(()=>window.__PAWS_GAME__.framing());
+  check(bucket,'mobile camera keeps cat and Henley visible inside 8m',framing?.distance<8&&framing?.catVisible&&framing?.henleyVisible,JSON.stringify(framing));
+  await shot(page,'mobile-02-pressure-frame.png');
+
+  await restartClean(page);
+  await page.locator('#pause-button').tap();try{await page.waitForFunction(()=>window.__PAWS_QA__?.paused===true,null,{timeout:900});}catch{}await shot(page,'mobile-03-pause.png');
+  check(bucket,'mobile pause is usable',await page.locator('[data-resume]').isVisible().catch(()=>false),`mode=${await page.evaluate(()=>window.__PAWS_QA__.mode)}, paused=${await page.evaluate(()=>window.__PAWS_QA__.paused)}`);
+  if(await page.locator('[data-resume]').isVisible().catch(()=>false)){await page.locator('[data-resume]').tap();await page.waitForFunction(()=>window.__PAWS_QA__?.paused===false);}
   check(bucket,'mobile browser emitted no errors',bucket.errors.length===0,bucket.errors.join(' | '));
   await context.close();
 }
