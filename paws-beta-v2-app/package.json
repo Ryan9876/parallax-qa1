@@ -8,7 +8,8 @@
     "vendor:cc0": "node scripts/vendor-cc0-assets.mjs",
     "vendor:characters": "node scripts/vendor-character-assets.mjs",
     "vendor:audio": "node scripts/vendor-audio-assets.mjs",
-    "prepare:assets": "npm run generate:assets && npm run vendor:cc0 && npm run vendor:characters && npm run vendor:audio",
+    "compress:assets": "node scripts/compress-assets.mjs",
+    "prepare:assets": "npm run generate:assets && npm run vendor:cc0 && npm run vendor:characters && npm run vendor:audio && npm run compress:assets",
     "test:contracts": "node scripts/contract-tests.mjs",
     "test:asset-budget": "node scripts/asset-budget.mjs",
     "build": "npm run prepare:assets && vite build",
@@ -19,7 +20,12 @@
     "three": "0.180.0"
   },
   "devDependencies": {
-    "vite": "7.1.5",
-    "playwright": "1.55.0"
+    "@gltf-transform/cli": "4.5.0",
+    "@gltf-transform/core": "4.5.0",
+    "@gltf-transform/extensions": "4.5.0",
+    "ktx2-encoder": "0.6.0",
+    "playwright": "1.55.0",
+    "sharp": "0.34.3",
+    "vite": "7.1.5"
   }
 }
