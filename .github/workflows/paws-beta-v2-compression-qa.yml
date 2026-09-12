@@ -1,0 +1,130 @@
+name: Paws Beta V2 Compression QA
+on:
+  push:
+    branches: [paws-beta-v2-compression]
+permissions:
+  contents: write
+jobs:
+  compression-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch runtime loaders and compression gates
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          scene=Path('paws-beta-v2-app/src/scene.js')
+          s=scene.read_text()
+          patches=[
+            ("import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';\nimport { EXRLoader } from 'three/addons/loaders/EXRLoader.js';", "import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';\nimport { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';\nimport { EXRLoader } from 'three/addons/loaders/EXRLoader.js';\nimport { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';"),
+            ("function texture(loader,url,repeat=[2,2]){const t=loader.load(url);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...repeat);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}", "function configuredTexture(source,repeat=[2,2]){const t=source.clone();t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...repeat);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;t.needsUpdate=true;return t;}"),
+            ("this.loader=new THREE.TextureLoader();this.worldGroup=new THREE.Group();this.fxGroup=new THREE.Group();this.scene.add(this.worldGroup,this.fxGroup);", "this.ktx2Loader=new KTX2Loader().setTranscoderPath('/assets/basis/').detectSupport(this.renderer);this.worldGroup=new THREE.Group();this.fxGroup=new THREE.Group();this.scene.add(this.worldGroup,this.fxGroup);"),
+            ("this.assets.wood=texture(this.loader,'/assets/cc0/textures/wood-floor-1k.jpg',[4,5]);this.assets.plaster=texture(this.loader,'/assets/cc0/textures/plaster-wall-1k.jpg',[4,2]);\n    this._lights();this._contactShadows();this.resize();this.ready=this._loadEnvironmentAssets();", "this._lights();this._contactShadows();this.resize();this.ready=this._loadEnvironmentAssets();"),
+          ]
+          for old,new in patches:
+            if old not in s: raise SystemExit(f'Missing scene patch target: {old[:100]}')
+            s=s.replace(old,new,1)
+          old="""    const objLoader=new OBJLoader(),exrLoader=new EXRLoader();
+    const [sofa,coffee,env]=await Promise.all([
+      this._safe('kenney-sofa',objLoader.loadAsync('/assets/cc0/furniture/lounge-sofa.obj')),
+      this._safe('kenney-coffee',objLoader.loadAsync('/assets/cc0/furniture/coffee-table.obj')),
+      this._safe('polyhaven-hdri',exrLoader.loadAsync('/assets/cc0/hdri/studio-small-08-1k.exr')),
+    ]);
+    this.assets.sofa=sofa;this.assets.coffee=coffee;
+    if(env){env.mapping=THREE.EquirectangularReflectionMapping;this.scene.environment=env;}
+"""
+          new="""    const gltfLoader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).setKTX2Loader(this.ktx2Loader),exrLoader=new EXRLoader();
+    const [sofa,coffee,env,wood,plaster,tile,supportWood,rug,fabric]=await Promise.all([
+      this._safe('kenney-sofa',gltfLoader.loadAsync('/assets/cc0/furniture/lounge-sofa.glb')),
+      this._safe('kenney-coffee',gltfLoader.loadAsync('/assets/cc0/furniture/coffee-table.glb')),
+      this._safe('polyhaven-hdri',exrLoader.loadAsync('/assets/cc0/hdri/studio-small-08-1k.exr')),
+      this._safe('wood-ktx2',this.ktx2Loader.loadAsync('/assets/cc0/textures/wood-floor-1k.ktx2')),
+      this._safe('plaster-ktx2',this.ktx2Loader.loadAsync('/assets/cc0/textures/plaster-wall-1k.ktx2')),
+      this._safe('tile-ktx2',this.ktx2Loader.loadAsync('/assets/textures/tile.ktx2')),
+      this._safe('support-wood-ktx2',this.ktx2Loader.loadAsync('/assets/textures/wood.ktx2')),
+      this._safe('rug-ktx2',this.ktx2Loader.loadAsync('/assets/textures/rug.ktx2')),
+      this._safe('fabric-ktx2',this.ktx2Loader.loadAsync('/assets/textures/fabric.ktx2')),
+    ]);
+    this.assets.sofa=sofa?.scene||null;this.assets.coffee=coffee?.scene||null;this.assets.wood=wood;this.assets.plaster=plaster;this.assets.tile=tile;this.assets.supportWood=supportWood;this.assets.rug=rug;this.assets.fabric=fabric;
+    if(env){env.mapping=THREE.EquirectangularReflectionMapping;this.scene.environment=env;}
+"""
+          if old not in s: raise SystemExit('Missing environment loader block')
+          s=s.replace(old,new,1)
+          old="""    const fallbackFloor=texture(this.loader,kitchen?'/assets/textures/tile.svg':'/assets/textures/wood.svg',kitchen?[8,8]:[6,8]),fallbackWood=texture(this.loader,'/assets/textures/wood.svg',[2,2]),rug=texture(this.loader,'/assets/textures/rug.svg',[2,2]),fabric=texture(this.loader,'/assets/textures/fabric.svg',[2,2]);
+    const floorMap=kitchen?fallbackFloor:this.assets.wood,woodMap=this.assets.wood||fallbackWood,wallMap=this.assets.plaster||null;
+"""
+          new="""    const floorMap=kitchen?configuredTexture(this.assets.tile,[8,8]):configuredTexture(this.assets.wood,[6,8]),woodMap=configuredTexture(this.assets.wood||this.assets.supportWood,[2,2]),wallMap=configuredTexture(this.assets.plaster,[4,2]),rug=configuredTexture(this.assets.rug,[2,2]),fabric=configuredTexture(this.assets.fabric,[2,2]);
+"""
+          if old not in s: raise SystemExit('Missing build texture block')
+          s=s.replace(old,new,1)
+          scene.write_text(s)
+
+          game=Path('paws-beta-v2-app/src/game.js')
+          g=game.read_text()
+          for old,new in [
+            ("placeholderColor:0xff7a22,onError:err('orange')", "placeholderColor:0xff7a22,onError:err('orange'),ktx2Loader:this.view.ktx2Loader"),
+            ("placeholderColor:0x92a4b5,onError:err('gray')", "placeholderColor:0x92a4b5,onError:err('gray'),ktx2Loader:this.view.ktx2Loader"),
+            ("placeholderColor:0x8d614e,onError:err('henley')", "placeholderColor:0x8d614e,onError:err('henley'),ktx2Loader:this.view.ktx2Loader"),
+          ]:
+            if old not in g: raise SystemExit(f'Missing game loader target {old}')
+            g=g.replace(old,new,1)
+          game.write_text(g)
+
+          budget=Path('paws-beta-v2-app/scripts/asset-budget.mjs')
+          b=budget.read_text()
+          marker="const sampled=provenance.sampledAudio||{};"
+          block="""const compression=provenance.compression||{};
+assert(String(compression.geometry||'').includes('EXT_meshopt_compression'),'Meshopt compression provenance missing');
+assert(String(compression.textures||'').includes('KTX2'),'KTX2/Basis compression provenance missing');
+const uncompressedTextures=walk(publicAssets).filter(p=>/\\.(?:png|jpe?g|webp|svg)$/i.test(p));
+assert(uncompressedTextures.length===0,`uncompressed shipped textures: ${uncompressedTextures.map(p=>path.relative(publicAssets,p)).join(', ')}`);
+for(const rel of ['cc0/textures/wood-floor-1k.ktx2','cc0/textures/plaster-wall-1k.ktx2','textures/tile.ktx2','textures/wood.ktx2','textures/rug.ktx2','textures/fabric.ktx2']){
+  const file=path.join(publicAssets,rel);assert(exists(file),`missing KTX2 ${rel}`);if(exists(file))assert(fs.readFileSync(file).subarray(0,12).toString('hex')==='ab4b5458203230bb0d0a1a0a',`invalid KTX2 ${rel}`);
+}
+for(const rel of ['characters/authored/cat.glb','characters/authored/henley.glb','cc0/furniture/lounge-sofa.glb','cc0/furniture/coffee-table.glb']){
+  const file=path.join(publicAssets,rel);assert(exists(file),`missing compressed GLB ${rel}`);if(exists(file))assert(fs.readFileSync(file).includes(Buffer.from('EXT_meshopt_compression')),`missing Meshopt extension ${rel}`);
+}
+for(const rel of ['basis/basis_transcoder.js','basis/basis_transcoder.wasm'])assert(exists(path.join(publicAssets,rel)),`missing same-origin Basis transcoder ${rel}`);
+
+"""+marker
+          if marker not in b: raise SystemExit('Missing asset budget marker')
+          b=b.replace(marker,block,1)
+          budget.write_text(b)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install compression toolchain
+        working-directory: paws-beta-v2-app
+        run: npm install --no-audit --no-fund
+      - name: Contracts and compressed production build
+        working-directory: paws-beta-v2-app
+        run: |
+          npm run test:contracts
+          npm run build
+          npm run test:asset-budget
+      - name: Install Chromium
+        working-directory: paws-beta-v2-app
+        run: npx playwright install --with-deps chromium
+      - name: Start compressed preview
+        working-directory: paws-beta-v2-app
+        run: |
+          npm run preview > /tmp/paws-compressed-preview.log 2>&1 &
+          sleep 3
+      - name: Play-test compressed build
+        working-directory: paws-beta-v2-app
+        run: |
+          node scripts/runtime-origin-qa.mjs
+          node scripts/browser-qa.mjs
+          node scripts/onboarding-qa.mjs
+      - name: Commit verified compressed loader conversion
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/paws-beta-v2-compression-qa.yml
+          git add paws-beta-v2-app/src/scene.js paws-beta-v2-app/src/game.js paws-beta-v2-app/scripts/asset-budget.mjs paws-beta-v2-app/package-lock.json
+          git commit -m 'Load KTX2 textures and Meshopt geometry'
+          git push
