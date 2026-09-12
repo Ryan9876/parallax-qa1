@@ -19,7 +19,7 @@ export function createStorybookHenley(){
   const skirt=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.30,.46,.62,20,1,false),dress));skirt.position.y=.78;body.add(skirt);
   const torso=capsule(.265,.34,dress);torso.position.y=1.18;body.add(torso);
   const flowerSpots=[[-.20,.88,.35,0],[-.05,.99,.37,2],[.18,.90,.34,1],[-.16,1.20,.245,3],[.13,1.24,.25,4],[.02,.74,.43,2],[-.27,.73,.30,1],[.26,.78,.29,0]];
-  flowerSpots.forEach(([x,y,z,i],n)=>{const dot=sphere(n%3===0?.035:.028,floral[i]);dot.position.set(x,y,z);body.add(dot);});
+  flowerSpots.forEach(([x,y,z,i],n)=>{for(const zz of [z,-z]){const dot=sphere(n%3===0?.035:.028,floral[i]);dot.position.set(x,y,zz);body.add(dot);}});
 
   const neck=capsule(.075,.06,skin);neck.position.y=1.48;body.add(neck);
   const head=sphere(.245,skin);head.position.y=1.69;head.scale.set(1,.98,.93);body.add(head);
@@ -42,7 +42,7 @@ export function createStorybookHenley(){
   const ball=sphere(.085,standard(0x55a89c,.58));ball.position.set(.39,.91,.10);toy.add(ball);
   const tassel=shadow(new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.22,8),standard(0xe5b75e,.7)));tassel.position.set(.39,.79,.10);toy.add(tassel);body.add(toy);
 
-  root.scale.setScalar(1.02);root.userData.storybook=true;
+  root.scale.setScalar(.79);root.userData.storybook=true;
   let phase=0,actionTimer=0,action='idle',holdingToy=false;
   function play(next){if(next==='call'||next==='celebrate'){action=next;actionTimer=next==='celebrate'?2.2:.85;}}
   function setHoldingToy(value){holdingToy=!!value;toy.visible=holdingToy;}
@@ -54,7 +54,7 @@ export function createStorybookHenley(){
     if(action==='call'){arms[1].rotation.x=damp(arms[1].rotation.x,-1.65,16,dt);arms[1].rotation.z=damp(arms[1].rotation.z,-.38,14,dt);body.rotation.y=Math.sin(phase*1.8)*.05;}
     else if(action==='celebrate'){arms[0].rotation.z=damp(arms[0].rotation.z,-1.65,14,dt);arms[1].rotation.z=damp(arms[1].rotation.z,1.65,14,dt);body.rotation.y=Math.sin(phase*2.1)*.09;}
     else{arms[0].rotation.z=damp(arms[0].rotation.z,0,12,dt);arms[1].rotation.z=damp(arms[1].rotation.z,0,12,dt);body.rotation.y=damp(body.rotation.y,0,10,dt);}
-    body.position.y=damp(body.position.y,Math.abs(c)*.025*energy,14,dt);body.rotation.z=damp(body.rotation.z,-s*.018*energy,10,dt);head.rotation.y=damp(head.rotation.y,s*.022*energy,8,dt);toy.visible=holdingToy;
+    body.position.y=damp(body.position.y,.10+Math.abs(c)*.025*energy,14,dt);body.rotation.z=damp(body.rotation.z,-s*.018*energy,10,dt);head.rotation.y=damp(head.rotation.y,s*.022*energy,8,dt);toy.visible=holdingToy;
   }
   return {group:root,species:'human',storybook:true,play,update,setHoldingToy,get holdingToy(){return holdingToy;},get action(){return action;}};
 }
