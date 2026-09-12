@@ -23,7 +23,7 @@ function recordRuntimeError(kind,error){
     simulationTime:Number(s?.elapsed||0),
   });
 }
-function modelSummary(model){return model?{failed:!!model.failed,species:model.species||'unknown',clips:[...(model.availableClips||[])],current:model.currentName||'',collar:!!model.group?.getObjectByName('socket_collar'),head:!!model.group?.getObjectByName('socket_head')}:null;}
+function modelSummary(model){return model?{failed:!!model.failed,species:model.species||'unknown',clips:[...(model.availableClips||[])],synthetic:[...(model.syntheticClips||[])],current:model.currentName||'',semantic:model.semanticState||'',history:[...(model.stateHistory||[])],motion:{...(model.motion||{})},collar:!!model.group?.getObjectByName('socket_collar'),head:!!model.group?.getObjectByName('socket_head')}:null;}
 
 const qaSurface={
   schemaVersion:QA_SCHEMA_VERSION,
@@ -46,6 +46,8 @@ const qaSurface={
   get audioAssets(){return game.audio.status();},
   get performance(){return performanceGovernor.status();},
   forcePerformanceTier(tier){return performanceGovernor.forceTier(tier);},
+  holdHenleyForAnimationQA(){if(!game.state)return false;game.state.henleyPaused=true;game.state.henley.distractionTimer=999;return true;},
+  forceCatAnimation(state,index=0){const model=game.models[index];if(!model)return null;const oneShot=['decelerate','jumpRise','land','nearCatch','caught'].includes(state);model.play(state,{loop:!oneShot,hold:.7,force:true});return modelSummary(model);},
   playAudioGroup(group){game.audio.play(group);return game.audio.status();},
   expireAutonomousPenalty(){const s=game.state;if(!s)return false;const entry=s.cats?.find(cat=>cat.captured);if(!entry)return false;entry.returnTimer=.04;return true;},
   prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},

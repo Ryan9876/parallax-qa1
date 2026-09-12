@@ -154,7 +154,7 @@ function synthesizeCatClips(root){
 
 export class CharacterModel{
   constructor(group,mixer,clips,{yawOffset=Math.PI,species='unknown'}={}){
-    this.group=group;this.mixer=mixer;this.clips=clips;this.actions=new Map(clips.map(c=>[c.name,mixer.clipAction(c)]));this.current=null;this.currentName='';this.semanticState='idle';this.stateHistory=[];this.lockUntil=0;this.motion={speed:0,heading:0,initialized:false};this.failed=false;this.yawOffset=yawOffset;this.species=species;this.availableClips=clips.map(c=>c.name);this.syntheticClips=this.availableClips.filter(n=>CAT_SYNTH_NAMES.includes(n));
+    this.group=group;this.mixer=mixer;this.clips=clips;this.actions=new Map(clips.map(c=>[c.name,mixer.clipAction(c)]));this.current=null;this.currentName='';this.semanticState='idle';this.stateHistory=[];this.lockUntil=0;this.motion={speed:0,heading:0,initialized:false,movingFor:0,wasMoving:false};this.failed=false;this.yawOffset=yawOffset;this.species=species;this.availableClips=clips.map(c=>c.name);this.syntheticClips=this.availableClips.filter(n=>CAT_SYNTH_NAMES.includes(n));
   }
   resolve(name){for(const candidate of clipCandidates(name)){if(this.actions.has(candidate))return{candidate,action:this.actions.get(candidate)};}const fallback=this.clips[0];return fallback?{candidate:fallback.name,action:this.actions.get(fallback.name)}:null;}
   play(name,{fade=.14,loop=true,hold=0,timeScale=1,force=false}={}){
@@ -163,10 +163,25 @@ export class CharacterModel{
     if(this.current)this.current.fadeOut(fade);next.reset().setEffectiveWeight(1).setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);next.clampWhenFinished=!loop;next.fadeIn(fade).play();this.current=next;this.currentName=resolved.candidate;this.semanticState=name;if(hold>0)this.lockUntil=this.mixer.time+hold;if(this.stateHistory.at(-1)!==name){this.stateHistory.push(name);if(this.stateHistory.length>24)this.stateHistory.shift();}return true;
   }
   selectMotion({speed=0,heading=0,grounded=true,vy=0,vaultAnim=0,landTimer=0,mode='playing',active=false,dt=1/60}={}){
-    const prev=this.motion.speed,delta=this.motion.initialized?Math.atan2(Math.sin(heading-this.motion.heading),Math.cos(heading-this.motion.heading)):0,turnRate=Math.abs(delta)/Math.max(.001,dt);let anim='idle',loop=true,hold=0,timeScale=1;
-    if(mode==='caught'&&active){anim='caught';loop=false;hold=.7;}else if(mode==='success'){anim='success';loop=true;}else if(vaultAnim>0){anim='jumpRise';loop=false;hold=.18;}else if(landTimer>0){anim='land';loop=false;hold=.22;}else if(!grounded){anim=vy>0?'jumpRise':'fall';loop=vy<=0;timeScale=.95;}else if(speed<.18&&prev>.55){anim='decelerate';loop=false;hold=.26;}else if(turnRate>1.15&&speed>.38){anim='turn';timeScale=Math.min(1.35,.85+turnRate*.12);}else if(speed>2.15){anim='run';timeScale=Math.min(1.28,Math.max(.72,speed/3.25));}else if(speed>.34){anim='accelerate';timeScale=Math.min(1.18,Math.max(.72,speed/1.55));}
-    this.motion={speed,heading,initialized:true};return{anim,loop,hold,timeScale};
+    const prev=this.motion,delta=prev.initialized?Math.atan2(Math.sin(heading-prev.heading),Math.cos(heading-prev.heading)):0,turnRate=Math.abs(delta)/Math.max(.001,dt),moving=speed>.34,movingFor=moving?(prev.movingFor||0)+dt:0;
+    let anim='idle',loop=true,hold=0,timeScale=1,wasMoving=!!prev.wasMoving||speed>.55;
+    if(mode==='caught'&&active){anim='caught';loop=false;hold=.7;}
+    else if(mode==='success'){anim='success';loop=true;}
+    else if(vaultAnim>0){anim='jumpRise';loop=false;hold=.18;}
+    else if(landTimer>0){anim='land';loop=false;hold=.22;}
+    else if(!grounded){anim=vy>0?'jumpRise':'fall';loop=vy<=0;timeScale=.95;}
+    else if(speed<.18&&prev.wasMoving){anim='decelerate';loop=false;hold=.28;wasMoving=false;}
+    else if(moving){
+      const justStarted=!prev.initialized||prev.speed<=.34||movingFor<.28;
+      const deliberateTurn=movingFor>.35&&speed>.75&&turnRate>2.8;
+      if(justStarted){anim='accelerate';timeScale=Math.min(1.16,Math.max(.76,speed/1.55));}
+      else if(deliberateTurn){anim='turn';timeScale=Math.min(1.28,.88+turnRate*.07);}
+      else if(speed>2.15){anim='run';timeScale=Math.min(1.25,Math.max(.78,speed/3.25));}
+      else{anim='accelerate';timeScale=Math.min(1.14,Math.max(.76,speed/1.55));}
+    }
+    this.motion={speed,heading,initialized:true,movingFor,wasMoving};return{anim,loop,hold,timeScale,turnRate,movingFor};
   }
+  resetMotion(){this.motion={speed:0,heading:0,initialized:false,movingFor:0,wasMoving:false};this.lockUntil=0;}
   update(dt){this.mixer.update(dt);}
 }
 const loader=new GLTFLoader();
