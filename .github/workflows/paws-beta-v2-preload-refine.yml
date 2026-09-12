@@ -11,11 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch pre-run asset readiness and performance QA
+      - name: Patch pre-run asset readiness
         run: |
           python - <<'PY'
           from pathlib import Path
-
           game=Path('paws-beta-v2-app/src/game.js')
           s=game.read_text()
           replacements=[
@@ -30,18 +29,6 @@ jobs:
               raise SystemExit(f'Missing game patch target: {old}')
             s=s.replace(old,new,1)
           game.write_text(s)
-
-          qa=Path('paws-beta-v2-app/scripts/runtime-origin-qa.mjs')
-          q=qa.read_text()
-          old="await page.locator('[data-play]').click();await page.locator('[data-level=\"ch1-l1\"]').click();await page.locator('[data-tier=\"kitten\"]').click();await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');"
-          new="await page.locator('[data-play]').click();await page.locator('[data-level=\"ch1-l1\"]').click();await page.locator('[data-tier=\"kitten\"]').click();const startAt=await page.evaluate(()=>performance.now());await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');const playableMs=(await page.evaluate(()=>performance.now()))-startAt;check('level selection to playable stays under 5 seconds',playableMs<5000,`playableMs=${playableMs.toFixed(1)}`);"
-          if old not in q: raise SystemExit('Missing runtime QA start target')
-          q=q.replace(old,new,1)
-          marker="check('all sampled gameplay audio and Henley voice decode in Chromium',audio.total>=14&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));"
-          insert=marker+"\n  const perf=await page.evaluate(()=>window.__POTR_QA__.performance);check('performance governor defines iPhone 11 and 16.6/33.3ms tiers',perf.minimumSpec==='iPhone 11'&&perf.qualityTargetMs===16.6&&perf.fallbackTargetMs===33.3,JSON.stringify(perf));const fallback=await page.evaluate(()=>window.__POTR_QA__.forcePerformanceTier('fallback'));check('33.3ms fallback tier can reduce render pixel ratio',fallback.tier==='fallback'&&fallback.targetFrameMs===33.3&&fallback.pixelRatio<=1,JSON.stringify(fallback));await page.evaluate(()=>window.__POTR_QA__.forcePerformanceTier('quality'));check('no more than three authored character rigs are active',activeCharacters.cats.length+(activeCharacters.henley?1:0)<=3,JSON.stringify(activeCharacters));"
-          if marker not in q: raise SystemExit('Missing runtime QA audio marker')
-          q=q.replace(marker,insert,1)
-          qa.write_text(q)
           PY
       - name: Commit refinement and remove one-time workflow
         run: |
@@ -49,6 +36,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/paws-beta-v2-preload-refine.yml
-          git add paws-beta-v2-app/src/game.js paws-beta-v2-app/scripts/runtime-origin-qa.mjs
-          git commit -m 'Gate gameplay on asset readiness and performance tiers'
+          git add paws-beta-v2-app/src/game.js
+          git commit -m 'Gate gameplay on pre-run asset readiness'
           git push
