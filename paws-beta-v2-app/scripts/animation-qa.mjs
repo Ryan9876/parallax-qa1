@@ -43,7 +43,7 @@ try{
 
   await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='caught',null,{timeout:3000});}catch{}
   await page.waitForTimeout(180);const caught=(await cats(page))[0];
-  check('terminal catch holds caught animation',window!==undefined&&caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify(caught));await shot(page,'07-caught.png');
+  check('terminal catch holds caught animation',caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify(caught));await shot(page,'07-caught.png');
 
   await page.locator('[data-retry]').click();await page.waitForFunction(()=>window.__PAWS_QA__.mode==='playing');await page.evaluate(()=>window.__PAWS_GAME__.completeOnboarding());
   await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='success',null,{timeout:3500});}catch{}
