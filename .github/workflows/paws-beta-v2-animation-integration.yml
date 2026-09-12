@@ -1,3 +1,4 @@
+# Animation pass v2: stabilized locomotion arbitration
 name: Paws Beta V2 Animation Integration
 on:
   push:
