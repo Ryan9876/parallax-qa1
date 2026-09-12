@@ -1,0 +1,5 @@
+{
+  "installCommand": "cd paws-beta-v2-app && npm install --no-audit --no-fund",
+  "buildCommand": "cd paws-beta-v2-app && npm run build",
+  "outputDirectory": "paws-beta-v2-app/dist"
+}
