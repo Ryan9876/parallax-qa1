@@ -26,13 +26,24 @@ try{
   check('authored Henley rig loaded without fallback',!!characters.henley&&!characters.henley.failed&&characters.henley.species==='dog',JSON.stringify(characters.henley));
   check('authored rigs expose animation clips',characters.cats.every(c=>c.clips.length>0)&&characters.henley?.clips.length>0,JSON.stringify({cats:characters.cats.map(c=>c.clips),henley:characters.henley?.clips}));
   check('cat cosmetic/head sockets exist',characters.cats.every(c=>c.collar&&c.head),JSON.stringify(characters.cats));
-  await page.locator('[data-play]').click();await page.locator('[data-level="ch1-l1"]').click();await page.locator('[data-tier="kitten"]').click();await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
+  check('no more than three authored character rigs are active',characters.cats.length+(characters.henley?1:0)<=3,JSON.stringify(characters));
+
+  await page.locator('[data-play]').click();await page.locator('[data-level="ch1-l1"]').click();await page.locator('[data-tier="kitten"]').click();
+  const startAt=await page.evaluate(()=>performance.now());
+  await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
+  const playableMs=(await page.evaluate(()=>performance.now()))-startAt;
+  check('level selection to playable stays under 5 seconds',playableMs<5000,`playableMs=${playableMs.toFixed(1)}`);
   try{await page.waitForFunction(()=>{const a=window.__POTR_QA__.audioAssets;return a.total>=18&&a.ready===a.total&&a.voiceReady===4&&a.loops.length===2&&a.errors.length===0;},null,{timeout:9000});}catch{}
   await page.waitForTimeout(600);
-  const activeCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets),audio=await page.evaluate(()=>window.__POTR_QA__.audioAssets);
+  const activeCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets),audio=await page.evaluate(()=>window.__POTR_QA__.audioAssets),perf=await page.evaluate(()=>window.__POTR_QA__.performance);
   check('animation mixer selects active authored clips',activeCharacters.cats.every(c=>!!c.current)&&!!activeCharacters.henley?.current,JSON.stringify(activeCharacters));
   check('all sampled gameplay audio, background bed and Henley voice decode in Chromium',audio.total>=18&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
   check('music and ambience run as exactly two low-level loops',audio.loops.length===2&&audio.loops.includes('music')&&audio.loops.includes('ambience'),JSON.stringify(audio.loops));
+  check('performance governor defines iPhone 11 and 16.6/33.3ms tiers',perf.minimumSpec==='iPhone 11'&&perf.qualityTargetMs===16.6&&perf.fallbackTargetMs===33.3,JSON.stringify(perf));
+  const fallback=await page.evaluate(()=>window.__POTR_QA__.forcePerformanceTier('fallback'));
+  check('33.3ms fallback tier lowers render pixel ratio',fallback.tier==='fallback'&&fallback.targetFrameMs===33.3&&fallback.pixelRatio<=1,JSON.stringify(fallback));
+  const restored=await page.evaluate(()=>window.__POTR_QA__.forcePerformanceTier('quality'));
+  check('quality tier restores the 16.6ms target',restored.tier==='quality'&&restored.targetFrameMs===16.6,JSON.stringify(restored));
   await page.evaluate(()=>{window.__POTR_QA__.playAudioGroup('land');window.__POTR_QA__.playAudioGroup('land');});await page.waitForTimeout(80);
   const landingAudio=await page.evaluate(()=>window.__POTR_QA__.audioAssets),landHistory=landingAudio.history?.land||[];
   check('consecutive landing events use different samples',landHistory.length>=2&&landHistory.at(-1)!==landHistory.at(-2),JSON.stringify(landHistory));
