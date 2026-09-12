@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const CLIP_ALIASES={jump:'jumpRise',air:'fall',stop:'decelerate',near:'nearCatch'};
 const STATE_CLIPS={
@@ -63,10 +64,10 @@ export class CharacterModel{
   play(name,{fade=.18,loop=true}={}){const resolved=this.resolve(name);if(!resolved)return;const next=resolved.action;if(next===this.current)return;if(this.current)this.current.fadeOut(fade);next.reset().setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);next.clampWhenFinished=!loop;next.fadeIn(fade).play();this.current=next;this.currentName=resolved.candidate;}
   update(dt){this.mixer.update(dt);}
 }
-const loader=new GLTFLoader();
-export async function loadCharacter(requestedUrl,{placeholderColor=0xff00ff,onError=()=>{}}={}){
+export async function loadCharacter(requestedUrl,{placeholderColor=0xff00ff,onError=()=>{},ktx2Loader=null}={}){
   const config=AUTHORED[requestedUrl]||{url:requestedUrl,tint:null,height:1.1,yawOffset:Math.PI,species:'unknown'};
   try{
+    const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);if(ktx2Loader)loader.setKTX2Loader(ktx2Loader);
     const gltf=await loader.loadAsync(config.url),content=gltf.scene;
     normalizeScene(content,config.height,config.tint);
     const group=new THREE.Group();group.name=`character-${config.species}`;group.add(content);addSockets(group,config.height);
