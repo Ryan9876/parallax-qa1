@@ -48,7 +48,7 @@ try{
     check('first autonomous capture visually communicates return',penalty.kind==='return',penalty.kind);
     check('Kitten autonomous penalty is configured at four simulation seconds',Math.abs(penalty.penalty.remaining-4)<.3,`remaining=${penalty.penalty.remaining.toFixed(2)}`);await shot(page,'desktop-05-return.png');
 
-    await page.evaluate(()=>window.__POTR_QA__.expediteAutonomousReturn());
+    await page.evaluate(()=>window.__POTR_QA__.expireAutonomousPenalty());
     try{await page.waitForFunction(()=>window.__POTR_QA__.autonomousPenalty.active===false||window.__PAWS_QA__.mode!=='playing',null,{timeout:2500});}catch{}
     const returned=await page.evaluate(()=>({penalty:window.__POTR_QA__.autonomousPenalty,mode:window.__PAWS_QA__.mode,lastReturnDistance:window.__POTR_QA__.lastReturnDistance,requiredDetection:window.__POTR_QA__.requiredDetection}));
     check('captured teammate returns without terminating the run',!returned.penalty.active&&returned.mode==='playing',JSON.stringify(returned));
