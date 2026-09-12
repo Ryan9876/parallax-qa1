@@ -1,4 +1,4 @@
-# Animation pass v2: stabilized locomotion arbitration
+# Animation pass v3: robust terminal-state QA synchronization
 name: Paws Beta V2 Animation Integration
 on:
   push:
