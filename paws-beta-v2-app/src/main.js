@@ -42,6 +42,7 @@ const qaSurface={
   get visualAssets(){return{sofa:!!game.view.assets?.sofa,coffee:!!game.view.assets?.coffee,environment:!!game.view.scene.environment,contactShadows:Number(game.view.contactShadows?.length||0),errors:[...(game.view.assetErrors||[])]};},
   get characterAssets(){return{ready:!!game.modelReady,cats:game.models.map(modelSummary),henley:modelSummary(game.henleyModel)};},
   get audioAssets(){return game.audio.status();},
+  playAudioGroup(group){game.audio.play(group);return game.audio.status();},
   prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},
 };
 window.__POTR_QA__=qaSurface;

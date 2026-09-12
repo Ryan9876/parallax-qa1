@@ -13,11 +13,15 @@ const samples=[
   {file:'jump-1.mp3',id:'1795',name:'Whoosh #3',page:'https://bigsoundbank.com/whoosh-3-s1795.html',role:'jump/vault'},
   {file:'jump-2.mp3',id:'1798',name:'Whoosh #10',page:'https://bigsoundbank.com/whoosh-10-s1798.html',role:'jump/vault'},
   {file:'near.mp3',id:'1802',name:'Whoosh #9',page:'https://bigsoundbank.com/whoosh-9-s1802.html',role:'near miss'},
-  {file:'land.mp3',id:'1836',name:'Jumping on Concrete #2',page:'https://bigsoundbank.com/jumping-on-concrete-2-s1836.html',role:'landing'},
+  {file:'land-1.mp3',id:'1836',name:'Jumping on Concrete #2',page:'https://bigsoundbank.com/jumping-on-concrete-2-s1836.html',role:'landing variant'},
+  {file:'land-2.mp3',id:'1835',name:'Jumping on Concrete #1',page:'https://bigsoundbank.com/jumping-on-concrete-1-s1835.html',role:'landing variant'},
   {file:'collect.mp3',id:'0010',name:'Small bell',page:'https://bigsoundbank.com/small-bell-s0010.html',role:'collectible'},
   {file:'objective.mp3',id:'2080',name:'Chimes dream #2',page:'https://bigsoundbank.com/chimes-dream-2-s2080.html',role:'objective/success'},
   {file:'switch.mp3',id:'1682',name:'Operation game #1',page:'https://bigsoundbank.com/operation-game-1-s1682.html',role:'cat switch'},
-  {file:'caught.mp3',id:'2461',name:'Punch #6',page:'https://bigsoundbank.com/punch-6-s2461.html',role:'caught impact'},
+  {file:'caught-1.mp3',id:'2461',name:'Punch #6',page:'https://bigsoundbank.com/punch-6-s2461.html',role:'caught impact variant'},
+  {file:'caught-2.mp3',id:'2462',name:'Punch #7',page:'https://bigsoundbank.com/punch-7-s2462.html',role:'caught impact variant'},
+  {file:'music-box.mp3',id:'0415',name:'Plush music box #1',page:'https://bigsoundbank.com/plush-music-box-1-s0415.html',role:'low-level gameplay music'},
+  {file:'kitchen-boil.mp3',id:'0149',name:'Boiling water',page:'https://bigsoundbank.com/boiling-water-s0149.html',role:'low-level kitchen ambience'},
 ];
 const voiceLines=[
   {file:'henley-almost.mp3',transcript:'Almost had you!',role:'proximity'},
@@ -42,7 +46,7 @@ const generatedVoice=voiceLines.map(line=>{const localPath=path.join(voiceDir,li
 const voiceBytes=generatedVoice.reduce((n,a)=>n+a.bytes,0);if(total+voiceBytes>2*1024*1024)throw new Error(`Gameplay audio plus voice ${total+voiceBytes} bytes exceeds 2 MiB release budget`);
 const provenancePath=path.join(root,'provenance.json');let provenance={version:1,assets:{},runtimeOrigins:['same-origin only']};
 try{provenance=JSON.parse(fs.readFileSync(provenancePath,'utf8'));}catch{}
-provenance.sampledAudio={generatedAt:new Date().toISOString(),policy:'CC0 field-recorded samples, build-vendored for same-origin runtime playback. Cat vocalizations are event-gated and never tied to routine movement.',samples:records};
+provenance.sampledAudio={generatedAt:new Date().toISOString(),policy:'CC0 field-recorded samples, build-vendored for same-origin runtime playback. Cat vocalizations are event-gated and never tied to routine movement. Landing, vault and impact groups use no-repeat variant bags. Music and kitchen ambience are mixed well below foreground gameplay cues.',samples:records};
 provenance.generatedVoice={generatedAt:new Date().toISOString(),policy:'Project-generated Henley taglines committed to the repository for same-origin runtime playback. Proximity delivery is probabilistic and cooldown-limited; terminal catch delivery is rate-limited.',lines:generatedVoice};
 fs.writeFileSync(provenancePath,JSON.stringify(provenance,null,2));
 console.log(`Vendored ${records.length} CC0 sampled audio files plus ${generatedVoice.length} Henley voice lines (${((total+voiceBytes)/1024).toFixed(1)} KiB).`);

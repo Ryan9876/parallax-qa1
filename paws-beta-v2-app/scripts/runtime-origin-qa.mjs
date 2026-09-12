@@ -27,11 +27,18 @@ try{
   check('authored rigs expose animation clips',characters.cats.every(c=>c.clips.length>0)&&characters.henley?.clips.length>0,JSON.stringify({cats:characters.cats.map(c=>c.clips),henley:characters.henley?.clips}));
   check('cat cosmetic/head sockets exist',characters.cats.every(c=>c.collar&&c.head),JSON.stringify(characters.cats));
   await page.locator('[data-play]').click();await page.locator('[data-level="ch1-l1"]').click();await page.locator('[data-tier="kitten"]').click();await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
-  try{await page.waitForFunction(()=>{const a=window.__POTR_QA__.audioAssets;return a.total>=14&&a.ready===a.total&&a.voiceReady===4&&a.errors.length===0;},null,{timeout:8000});}catch{}
-  await page.waitForTimeout(800);
+  try{await page.waitForFunction(()=>{const a=window.__POTR_QA__.audioAssets;return a.total>=18&&a.ready===a.total&&a.voiceReady===4&&a.loops.length===2&&a.errors.length===0;},null,{timeout:9000});}catch{}
+  await page.waitForTimeout(600);
   const activeCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets),audio=await page.evaluate(()=>window.__POTR_QA__.audioAssets);
   check('animation mixer selects active authored clips',activeCharacters.cats.every(c=>!!c.current)&&!!activeCharacters.henley?.current,JSON.stringify(activeCharacters));
-  check('all sampled gameplay audio and Henley voice decode in Chromium',audio.total>=14&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
+  check('all sampled gameplay audio, background bed and Henley voice decode in Chromium',audio.total>=18&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
+  check('music and ambience run as exactly two low-level loops',audio.loops.length===2&&audio.loops.includes('music')&&audio.loops.includes('ambience'),JSON.stringify(audio.loops));
+  await page.evaluate(()=>{window.__POTR_QA__.playAudioGroup('land');window.__POTR_QA__.playAudioGroup('land');});await page.waitForTimeout(80);
+  const landingAudio=await page.evaluate(()=>window.__POTR_QA__.audioAssets),landHistory=landingAudio.history?.land||[];
+  check('consecutive landing events use different samples',landHistory.length>=2&&landHistory.at(-1)!==landHistory.at(-2),JSON.stringify(landHistory));
+  for(let i=0;i<5;i++){await page.evaluate(()=>window.__PAWS_GAME__.restart());await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');try{await page.waitForFunction(()=>window.__POTR_QA__.audioAssets.loops.length===2,null,{timeout:2500});}catch{}}
+  const restartedAudio=await page.evaluate(()=>window.__POTR_QA__.audioAssets);
+  check('five restarts leave one music loop and one ambience loop',restartedAudio.loops.length===2&&new Set(restartedAudio.loops).size===2,JSON.stringify(restartedAudio));
   await page.screenshot({path:path.join(outDir,'desktop-authored-scene.png'),fullPage:true});
   await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));
   try{await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='caught',null,{timeout:2500});}catch{}
