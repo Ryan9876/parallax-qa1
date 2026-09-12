@@ -3,12 +3,14 @@ import './onboarding.css';
 import { ProfileStore } from './profile.js';
 import { GameUI } from './ui.js';
 import { PawsGame } from './game.js';
+import { PerformanceGovernor } from './performance.js';
 import { detectionRadius } from './config.js';
 
 const QA_SCHEMA_VERSION=1;
 const profile=new ProfileStore();
 const ui=new GameUI(profile);
 const game=new PawsGame(document.querySelector('#scene'),ui,profile);
+const performanceGovernor=new PerformanceGovernor(game.view);
 const runtimeErrors=[];
 
 function runSnapshot(){return window.__PAWS_GAME__?.snapshot?.()||null;}
@@ -42,12 +44,14 @@ const qaSurface={
   get visualAssets(){return{sofa:!!game.view.assets?.sofa,coffee:!!game.view.assets?.coffee,environment:!!game.view.scene.environment,contactShadows:Number(game.view.contactShadows?.length||0),errors:[...(game.view.assetErrors||[])]};},
   get characterAssets(){return{ready:!!game.modelReady,cats:game.models.map(modelSummary),henley:modelSummary(game.henleyModel)};},
   get audioAssets(){return game.audio.status();},
+  get performance(){return performanceGovernor.status();},
+  forcePerformanceTier(tier){return performanceGovernor.forceTier(tier);},
   playAudioGroup(group){game.audio.play(group);return game.audio.status();},
+  expireAutonomousPenalty(){const s=game.state;if(!s)return false;const entry=s.cats?.find(cat=>cat.captured);if(!entry)return false;entry.returnTimer=.04;return true;},
   prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},
-  expediteAutonomousReturn(){const s=game.state;if(!s||s.mode!=='playing')return false;const cat=s.cats.find(c=>c.captured);if(!cat)return false;cat.returnTimer=.06;return true;},
 };
 window.__POTR_QA__=qaSurface;
 window.addEventListener('error',event=>recordRuntimeError('error',event.error||event.message));
 window.addEventListener('unhandledrejection',event=>recordRuntimeError('unhandledrejection',event.reason));
 
-export {game,profile,ui};
+export {game,profile,ui,performanceGovernor};
