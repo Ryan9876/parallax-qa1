@@ -33,6 +33,11 @@ try{
   check('animation mixer selects active authored clips',activeCharacters.cats.every(c=>!!c.current)&&!!activeCharacters.henley?.current,JSON.stringify(activeCharacters));
   check('all sampled gameplay audio and Henley voice decode in Chromium',audio.total>=14&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
   await page.screenshot({path:path.join(outDir,'desktop-authored-scene.png'),fullPage:true});
+  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));
+  try{await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='caught',null,{timeout:2500});}catch{}
+  try{await page.waitForFunction(()=>Number(window.__POTR_QA__.audioAssets.plays?.henleyCatch||0)>=1,null,{timeout:1800});}catch{}
+  const caughtAudio=await page.evaluate(()=>window.__POTR_QA__.audioAssets);
+  check('terminal Henley catch invokes a rate-limited voice line',Number(caughtAudio.plays?.caught||0)>=1&&Number(caughtAudio.plays?.henleyCatch||0)>=1,JSON.stringify(caughtAudio.plays||{}));
   const uniqueHttp=[...new Set(report.requests.filter(u=>/^https?:/.test(u)))];
   const thirdParty=uniqueHttp.filter(url=>{try{return new URL(url).origin!==appOrigin;}catch{return false;}});
   check('all actual runtime HTTP requests stay on app origin',thirdParty.length===0,JSON.stringify(thirdParty));
