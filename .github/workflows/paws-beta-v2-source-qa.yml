@@ -44,6 +44,8 @@ jobs:
         run: node scripts/runtime-origin-qa.mjs
       - name: First-run comprehension QA
         run: node scripts/onboarding-qa.mjs
+      - name: Rendered animation state QA
+        run: node scripts/animation-qa.mjs
       - name: Upload rendered QA evidence
         if: always()
         uses: actions/upload-artifact@v4

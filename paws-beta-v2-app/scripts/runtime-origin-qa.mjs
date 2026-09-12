@@ -25,7 +25,6 @@ try{
   check('two authored cat rigs loaded without fallback',characters.ready&&characters.cats.length===2&&characters.cats.every(c=>c&&!c.failed&&c.species==='cat'),JSON.stringify(characters));
   check('authored Henley rig loaded without fallback',!!characters.henley&&!characters.henley.failed&&characters.henley.species==='dog',JSON.stringify(characters.henley));
   check('authored rigs expose animation clips',characters.cats.every(c=>c.clips.length>0)&&characters.henley?.clips.length>0,JSON.stringify({cats:characters.cats.map(c=>c.clips),henley:characters.henley?.clips}));
-  check('single-clip cat rigs enable procedural motion fallback',characters.cats.every(c=>c.proceduralMotion),JSON.stringify(characters.cats));
   check('cat cosmetic/head sockets exist',characters.cats.every(c=>c.collar&&c.head),JSON.stringify(characters.cats));
   check('no more than three authored character rigs are active',characters.cats.length+(characters.henley?1:0)<=3,JSON.stringify(characters));
 
@@ -38,10 +37,6 @@ try{
   await page.waitForTimeout(600);
   const activeCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets),audio=await page.evaluate(()=>window.__POTR_QA__.audioAssets),perf=await page.evaluate(()=>window.__POTR_QA__.performance);
   check('animation mixer selects active authored clips',activeCharacters.cats.every(c=>!!c.current)&&!!activeCharacters.henley?.current,JSON.stringify(activeCharacters));
-  await page.keyboard.down('w');await page.waitForTimeout(720);
-  const movingCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets);
-  await page.keyboard.up('w');await page.waitForTimeout(100);
-  check('procedural cat locomotion visibly responds to movement',movingCharacters.cats.some(c=>c.proceduralMotion&&['accelerate','run'].includes(c.motionState)&&c.proceduralEnergy>.02),JSON.stringify(movingCharacters.cats));
   check('all sampled gameplay audio, background bed and Henley voice decode in Chromium',audio.total>=18&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
   check('music and ambience run as exactly two low-level loops',audio.loops.length===2&&audio.loops.includes('music')&&audio.loops.includes('ambience'),JSON.stringify(audio.loops));
   check('performance governor defines iPhone 11 and 16.6/33.3ms tiers',perf.minimumSpec==='iPhone 11'&&perf.qualityTargetMs===16.6&&perf.fallbackTargetMs===33.3,JSON.stringify(perf));
