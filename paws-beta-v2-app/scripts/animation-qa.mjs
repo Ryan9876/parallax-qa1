@@ -41,9 +41,10 @@ try{
   const near=await page.evaluate(()=>window.__POTR_QA__.forceCatAnimation('nearCatch',0));await page.waitForTimeout(160);
   check('near-catch reaction resolves to synthesized clip',near.current==='Cat_NearCatch',JSON.stringify(near));await shot(page,'06-near-catch.png');
 
-  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='caught',null,{timeout:3000});}catch{}
-  await page.waitForTimeout(180);const caught=(await cats(page))[0];
-  check('terminal catch holds caught animation',caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify(caught));await shot(page,'07-caught.png');
+  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));
+  try{await page.locator('[data-retry]').waitFor({state:'visible',timeout:6000});}catch{}
+  const caughtMode=await page.evaluate(()=>window.__PAWS_QA__?.mode);const caught=(await cats(page))[0];
+  check('terminal catch reaches caught mode and holds caught animation',caughtMode==='caught'&&caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify({mode:caughtMode,caught}));await shot(page,'07-caught.png');
 
   await page.locator('[data-retry]').click();await page.waitForFunction(()=>window.__PAWS_QA__.mode==='playing');await page.evaluate(()=>window.__PAWS_GAME__.completeOnboarding());
   await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='success',null,{timeout:3500});}catch{}
