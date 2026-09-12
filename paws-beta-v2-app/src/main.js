@@ -23,7 +23,7 @@ function recordRuntimeError(kind,error){
     simulationTime:Number(s?.elapsed||0),
   });
 }
-function modelSummary(model){return model?{failed:!!model.failed,species:model.species||'unknown',clips:[...(model.availableClips||[])],current:model.currentName||'',collar:!!model.group?.getObjectByName('socket_collar'),head:!!model.group?.getObjectByName('socket_head')}:null;}
+function modelSummary(model){return model?{failed:!!model.failed,species:model.species||'unknown',clips:[...(model.availableClips||[])],current:model.currentName||'',motionState:model.motionState||'',proceduralMotion:!!model.proceduralMotion,proceduralEnergy:Number(model.proceduralEnergy||0),collar:!!model.group?.getObjectByName('socket_collar'),head:!!model.group?.getObjectByName('socket_head')}:null;}
 
 const qaSurface={
   schemaVersion:QA_SCHEMA_VERSION,
