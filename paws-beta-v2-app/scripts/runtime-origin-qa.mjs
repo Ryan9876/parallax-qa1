@@ -27,11 +27,11 @@ try{
   check('authored rigs expose animation clips',characters.cats.every(c=>c.clips.length>0)&&characters.henley?.clips.length>0,JSON.stringify({cats:characters.cats.map(c=>c.clips),henley:characters.henley?.clips}));
   check('cat cosmetic/head sockets exist',characters.cats.every(c=>c.collar&&c.head),JSON.stringify(characters.cats));
   await page.locator('[data-play]').click();await page.locator('[data-level="ch1-l1"]').click();await page.locator('[data-tier="kitten"]').click();await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
-  try{await page.waitForFunction(()=>{const a=window.__POTR_QA__.audioAssets;return a.total>0&&a.ready===a.total&&a.errors.length===0;},null,{timeout:8000});}catch{}
+  try{await page.waitForFunction(()=>{const a=window.__POTR_QA__.audioAssets;return a.total>=14&&a.ready===a.total&&a.voiceReady===4&&a.errors.length===0;},null,{timeout:8000});}catch{}
   await page.waitForTimeout(800);
   const activeCharacters=await page.evaluate(()=>window.__POTR_QA__.characterAssets),audio=await page.evaluate(()=>window.__POTR_QA__.audioAssets);
   check('animation mixer selects active authored clips',activeCharacters.cats.every(c=>!!c.current)&&!!activeCharacters.henley?.current,JSON.stringify(activeCharacters));
-  check('all sampled gameplay audio decodes in Chromium',audio.total>=10&&audio.ready===audio.total&&audio.errors.length===0,JSON.stringify(audio));
+  check('all sampled gameplay audio and Henley voice decode in Chromium',audio.total>=14&&audio.ready===audio.total&&audio.voiceReady===4&&audio.errors.length===0,JSON.stringify(audio));
   await page.screenshot({path:path.join(outDir,'desktop-authored-scene.png'),fullPage:true});
   const uniqueHttp=[...new Set(report.requests.filter(u=>/^https?:/.test(u)))];
   const thirdParty=uniqueHttp.filter(url=>{try{return new URL(url).origin!==appOrigin;}catch{return false;}});

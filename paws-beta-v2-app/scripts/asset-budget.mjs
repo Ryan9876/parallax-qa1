@@ -42,15 +42,24 @@ for(const asset of sampled.samples||[]){
   assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/audio/'),`${asset.file||'audio'} local path missing`);
   if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing sampled audio ${asset.local}`);}
 }
+const voice=provenance.generatedVoice||{};
+assert(Array.isArray(voice.lines)&&voice.lines.length===4,'Henley generated voice provenance requires four committed taglines');
+for(const asset of voice.lines||[]){
+  assert(asset.provider==='OpenAI AI Voice Generator',`${asset.file||'voice'} provider provenance missing`);
+  assert(asset.origin==='project-generated',`${asset.file||'voice'} origin provenance missing`);
+  assert(typeof asset.transcript==='string'&&asset.transcript.length>0,`${asset.file||'voice'} transcript missing`);
+  assert(typeof asset.local==='string'&&asset.local.startsWith('/assets/voice/'),`${asset.file||'voice'} local path missing`);
+  if(asset.local){const local=path.join(root,'public',asset.local.replace(/^\//,''));assert(exists(local),`missing Henley voice ${asset.local}`);}
+}
 
 const characterFiles=[...walk(path.join(publicAssets,'models')),...walk(path.join(publicAssets,'characters','authored'))];
 const environmentFiles=walk(path.join(publicAssets,'cc0','furniture'));
 const textureFiles=[...walk(path.join(publicAssets,'textures')),...walk(path.join(publicAssets,'cc0','textures'))];
-const audioFiles=walk(path.join(publicAssets,'audio'));
+const audioFiles=[...walk(path.join(publicAssets,'audio')),...walk(path.join(publicAssets,'voice'))];
 const hdriPath=path.join(publicAssets,'cc0','hdri','studio-small-08-1k.exr');
 const characterBytes=bytes(characterFiles),environmentBytes=bytes(environmentFiles),textureBytes=bytes(textureFiles),audioBytes=bytes(audioFiles),hdriBytes=exists(hdriPath)?fs.statSync(hdriPath).size:0;
 assert(characterBytes<=4*MiB,`characters ${fmt(characterBytes)} exceed 4 MiB`);
-assert(environmentBytes<=3*MiB,`environment geometry ${fmt(environmentBytes)} exceeds 3 MiB`);
+assert(environmentBytes<=3*MiB,`environment geometry ${fmt(environmentBytes)} exceed 3 MiB`);
 assert(textureBytes<=4*MiB,`textures ${fmt(textureBytes)} exceed 4 MiB`);
 assert(hdriBytes>0,'missing 1K HDRI');
 assert(hdriBytes<=1*MiB,`HDRI ${fmt(hdriBytes)} exceeds 1 MiB`);
@@ -64,6 +73,6 @@ const codeFiles=distFiles.filter(p=>/\.(?:js|css|html)$/i.test(p));
 const codeBytes=bytes(codeFiles);
 assert(codeBytes<=1*MiB,`code and UI ${fmt(codeBytes)} exceed 1 MiB`);
 
-console.log(`Asset budget: total ${fmt(distBytes)}/15; characters ${fmt(characterBytes)}/4; environment ${fmt(environmentBytes)}/3; textures ${fmt(textureBytes)}/4; HDRI ${fmt(hdriBytes)}/1; audio ${fmt(audioBytes)}/2; code ${fmt(codeBytes)}/1.`);
-console.log(`CC0 environment: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}. Authored characters: ${characters.cat?.creator||'missing'} cat / ${characters.henley?.creator||'missing'} Henley. Sampled audio: ${(sampled.samples||[]).length} CC0 files.`);
+console.log(`Asset budget: total ${fmt(distBytes)}/15; characters ${fmt(characterBytes)}/4; environment ${fmt(environmentBytes)}/3; textures ${fmt(textureBytes)}/4; HDRI ${fmt(hdriBytes)}/1; audio+voice ${fmt(audioBytes)}/2; code ${fmt(codeBytes)}/1.`);
+console.log(`CC0 environment: ${(cc0.furniture||[]).length} furniture, ${(cc0.textures||[]).length} textures, HDRI ${cc0.hdri?.assetId||'missing'}. Authored characters: ${characters.cat?.creator||'missing'} cat / ${characters.henley?.creator||'missing'} Henley. Sampled audio: ${(sampled.samples||[]).length} CC0 files + ${(voice.lines||[]).length} generated Henley lines.`);
 if(failures.length){for(const failure of failures)console.error(`FAIL ${failure}`);process.exit(1);}console.log('PASS release asset category budgets and provenance');
