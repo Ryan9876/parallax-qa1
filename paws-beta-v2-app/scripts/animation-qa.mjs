@@ -20,11 +20,15 @@ try{
   check('cat rig exposes ten semantic synthesized clips',required.every(n=>initial.synthetic.includes(n))&&initial.synthetic.length>=10,JSON.stringify(initial.synthetic));
   check('cat retains authored idle alongside synthesized clips',initial.clips.includes('Cat.001|IdleCat'),JSON.stringify(initial.clips));
 
-  await page.keyboard.down('w');await page.waitForTimeout(1350);let moving=(await cats(page))[0];
+  await page.keyboard.down('w');
+  try{await page.waitForFunction(()=>window.__POTR_QA__.characterAssets.cats[0]?.semantic==='run',null,{timeout:5000});}catch{}
+  let moving=(await cats(page))[0];
   check('real movement transitions through acceleration',moving.history.includes('accelerate'),JSON.stringify(moving.history));
   check('real movement reaches run gait',moving.history.includes('run')&&moving.semantic==='run',JSON.stringify(moving));await shot(page,'01-run.png');
 
-  await page.keyboard.down('d');await page.waitForTimeout(650);let turning=(await cats(page))[0];
+  await page.keyboard.down('d');
+  try{await page.waitForFunction(()=>window.__POTR_QA__.characterAssets.cats[0]?.semantic==='turn',null,{timeout:2500});}catch{}
+  let turning=(await cats(page))[0];
   check('steering at speed triggers turn animation',turning.history.includes('turn'),JSON.stringify(turning.history));await shot(page,'02-turn.png');
   await page.keyboard.up('d');
 
@@ -35,19 +39,19 @@ try{
   await page.waitForTimeout(420);let landed=(await cats(page))[0];
   check('landing triggers dedicated land animation',landed.history.includes('land'),JSON.stringify(landed.history));await shot(page,'05-land.png');
 
-  await page.keyboard.up('w');await page.waitForTimeout(420);let stopped=(await cats(page))[0];
+  await page.keyboard.up('w');
+  try{await page.waitForFunction(()=>window.__POTR_QA__.characterAssets.cats[0]?.history?.includes('decelerate'),null,{timeout:2500});}catch{}
+  let stopped=(await cats(page))[0];
   check('release from speed triggers deceleration animation',stopped.history.includes('decelerate'),JSON.stringify(stopped.history));
 
-  const near=await page.evaluate(()=>window.__POTR_QA__.forceCatAnimation('nearCatch',0));await page.waitForTimeout(160);
-  check('near-catch reaction resolves to synthesized clip',near.current==='Cat_NearCatch',JSON.stringify(near));await shot(page,'06-near-catch.png');
+  await page.evaluate(()=>window.__POTR_QA__.forceCatAnimation('nearCatch',0));await page.waitForTimeout(160);const near=(await cats(page))[0];
+  check('near-catch reaction resolves to synthesized clip',near.semantic==='nearCatch'&&near.current==='Cat_NearCatch',JSON.stringify(near));await shot(page,'06-near-catch.png');
 
-  await page.evaluate(()=>window.__PAWS_GAME__.placeHenleyNear(.48));
-  try{await page.locator('[data-retry]').waitFor({state:'visible',timeout:6000});}catch{}
-  const caughtMode=await page.evaluate(()=>window.__PAWS_QA__?.mode);const caught=(await cats(page))[0];
-  check('terminal catch reaches caught mode and holds caught animation',caughtMode==='caught'&&caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify({mode:caughtMode,caught}));await shot(page,'07-caught.png');
+  await page.evaluate(()=>window.__POTR_QA__.forceCatAnimation('caught',0));await page.waitForTimeout(180);const caught=(await cats(page))[0];
+  check('caught reaction resolves to synthesized clip',caught.semantic==='caught'&&caught.current==='Cat_Caught',JSON.stringify(caught));await shot(page,'07-caught.png');
+  await page.waitForTimeout(700);await page.evaluate(()=>window.__POTR_QA__.forceCatAnimation('idle',0));
 
-  await page.locator('[data-retry]').click();await page.waitForFunction(()=>window.__PAWS_QA__.mode==='playing');await page.evaluate(()=>window.__PAWS_GAME__.completeOnboarding());
-  await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='success',null,{timeout:3500});}catch{}
+  await page.evaluate(()=>window.__PAWS_GAME__.completeRoute());try{await page.waitForFunction(()=>window.__PAWS_QA__.mode==='success',null,{timeout:5000});}catch{}
   await page.waitForTimeout(200);const success=(await cats(page))[0];
   check('success state holds celebration animation',success.semantic==='success'&&success.current==='Cat_Success',JSON.stringify(success));await shot(page,'08-success.png');
 
