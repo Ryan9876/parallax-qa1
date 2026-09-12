@@ -1,8 +1,8 @@
 export const BUILD = Object.freeze({
-  game: 'Paws on the Run',
-  version: '1.0.0-beta.2',
-  revision: 'modular-rigged-v2',
-  reference: 'v0.10.6 control/camera benchmark',
+  game: 'Henley & the Pets',
+  version: '0.1.0-alpha.1',
+  revision: 'storybook-roundup-v1',
+  reference: 'Paws main 4ca4507 regression baseline',
 });
 
 export const TUNING = Object.freeze({
