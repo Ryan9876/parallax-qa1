@@ -1,0 +1,47 @@
+name: Paws Henley Redesign QA
+on:
+  workflow_dispatch:
+  push:
+    branches: [paws-henley-redesign]
+    paths:
+      - 'paws-beta-v2-app/**'
+      - '.github/workflows/paws-henley-redesign-qa.yml'
+permissions:
+  contents: read
+concurrency:
+  group: paws-henley-redesign-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  henley-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: paws-beta-v2-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Release asset budget
+        run: npm run test:asset-budget
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          npm run preview > /tmp/henley-preview.log 2>&1 &
+          echo $! > /tmp/henley-preview.pid
+          sleep 3
+      - name: Storybook gameplay and mobile QA
+        run: node scripts/henley-redesign-qa.mjs
+      - name: Upload rendered evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paws-henley-redesign-evidence
+          path: paws-beta-v2-app/qa-results/henley-redesign
+          if-no-files-found: warn
