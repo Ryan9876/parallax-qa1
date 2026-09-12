@@ -44,6 +44,7 @@ const qaSurface={
   get audioAssets(){return game.audio.status();},
   playAudioGroup(group){game.audio.play(group);return game.audio.status();},
   prepareInactiveCapture(distance=.52){const s=game.state;if(!s||s.mode!=='playing')return false;const idx=1-s.activeCat,cat=s.cats[idx],h=s.henley;if(cat.captured)return false;h.x=cat.x+distance;h.z=cat.z;h.state='pounce';h.target=idx;h.lockedHeading=Math.atan2(cat.x-h.x,cat.z-h.z);h.timer=.35;h.catchTimer=0;h.minAttemptDistance=999;return true;},
+  expediteAutonomousReturn(){const s=game.state;if(!s||s.mode!=='playing')return false;const cat=s.cats.find(c=>c.captured);if(!cat)return false;cat.returnTimer=.06;return true;},
 };
 window.__POTR_QA__=qaSurface;
 window.addEventListener('error',event=>recordRuntimeError('error',event.error||event.message));
