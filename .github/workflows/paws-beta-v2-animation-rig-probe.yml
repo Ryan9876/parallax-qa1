@@ -1,0 +1,38 @@
+name: Paws Beta V2 Animation Rig Probe
+on:
+  push:
+    branches: [paws-beta-v2-animation-lab]
+    paths:
+      - '.github/workflows/paws-beta-v2-animation-rig-probe.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: paws-beta-v2-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Vendor authored characters
+        run: npm run vendor:characters
+      - name: Inspect cat rig
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=fs.readFileSync('public/assets/characters/authored/cat.glb');
+          if(b.toString('ascii',0,4)!=='glTF') throw new Error('not GLB');
+          const jsonLen=b.readUInt32LE(12),jsonType=b.readUInt32LE(16);
+          if(jsonType!==0x4E4F534A) throw new Error('first chunk not JSON');
+          const j=JSON.parse(b.subarray(20,20+jsonLen).toString('utf8').trim());
+          const jointSet=new Set((j.skins||[]).flatMap(s=>s.joints||[]));
+          console.log('CAT_RIG_NODES_START');
+          (j.nodes||[]).forEach((n,i)=>{if(jointSet.has(i)||n.name) console.log(JSON.stringify({i,name:n.name||'',joint:jointSet.has(i),children:n.children||[],translation:n.translation||null,rotation:n.rotation||null,scale:n.scale||null}));});
+          console.log('CAT_RIG_ANIMS',JSON.stringify((j.animations||[]).map(a=>({name:a.name,channels:(a.channels||[]).map(c=>({node:c.target?.node,path:c.target?.path}))}))));
+          console.log('CAT_RIG_NODES_END');
+          NODE
