@@ -1,0 +1,69 @@
+name: Paws Beta V2 Animation Integration
+on:
+  push:
+    branches: [paws-beta-v2-animation-lab]
+    paths:
+      - '.github/workflows/paws-beta-v2-animation-integration.yml'
+permissions:
+  contents: write
+jobs:
+  animation-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: paws-beta-v2-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply gameplay animation integration
+        run: node scripts/apply-animation-game-patch.mjs
+      - name: Syntax and contract gates
+        run: |
+          node --check src/models.js
+          node --check src/game.js
+          node --check src/main.js
+          node --check scripts/animation-qa.mjs
+          npm run test:contracts
+      - name: Production build and asset budgets
+        run: |
+          npm run build
+          npm run test:asset-budget
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start production preview
+        run: |
+          npm run preview > /tmp/paws-animation-preview.log 2>&1 &
+          sleep 3
+      - name: Existing gameplay regression suite
+        run: node scripts/browser-qa.mjs
+      - name: Runtime asset and audio regression suite
+        run: node scripts/runtime-origin-qa.mjs
+      - name: First-run onboarding regression suite
+        run: node scripts/onboarding-qa.mjs
+      - name: Rendered animation state suite
+        run: node scripts/animation-qa.mjs
+      - name: Upload animation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paws-beta-v2-animation-evidence
+          path: paws-beta-v2-app/qa-results
+          if-no-files-found: warn
+      - name: Commit verified animation pass
+        if: success()
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/paws-beta-v2-animation-rig-probe.yml
+          git rm .github/workflows/paws-beta-v2-animation-integration.yml
+          git rm paws-beta-v2-app/scripts/apply-animation-game-patch.mjs
+          git add paws-beta-v2-app/src/models.js paws-beta-v2-app/src/game.js paws-beta-v2-app/src/main.js paws-beta-v2-app/scripts/animation-qa.mjs
+          git commit -m 'Add gameplay-driven cat animation suite'
+          git push
