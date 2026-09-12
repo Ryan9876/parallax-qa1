@@ -1,4 +1,4 @@
-# Animation pass v3: robust terminal-state QA synchronization
+# Animation pass v4: state-driven animation QA synchronization
 name: Paws Beta V2 Animation Integration
 on:
   push:
