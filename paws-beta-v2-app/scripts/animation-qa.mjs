@@ -15,7 +15,7 @@ try{
   page.on('pageerror',e=>report.errors.push(`pageerror:${e.message}`));page.on('console',m=>{if(m.type()==='error')report.errors.push(`console:${m.text()}`)});page.on('requestfailed',r=>report.errors.push(`requestfailed:${r.url()}`));
   await page.goto(BASE,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__POTR_QA__?.characterAssets?.ready,null,{timeout:30000});
   await page.locator('[data-play]').click();await page.locator('[data-level="ch1-l1"]').click();await page.locator('[data-tier="kitten"]').click();await page.locator('[data-start]').click();await page.waitForFunction(()=>window.__PAWS_QA__?.mode==='playing');
-  await page.evaluate(()=>window.__PAWS_GAME__.completeOnboarding());await page.waitForTimeout(250);
+  await page.evaluate(()=>{window.__PAWS_GAME__.completeOnboarding();window.__POTR_QA__.holdHenleyForAnimationQA();});await page.waitForTimeout(250);
   const initial=(await cats(page))[0],required=['Cat_Accelerate','Cat_Run','Cat_Decelerate','Cat_Turn','Cat_JumpRise','Cat_Fall','Cat_Land','Cat_NearCatch','Cat_Caught','Cat_Success'];
   check('cat rig exposes ten semantic synthesized clips',required.every(n=>initial.synthetic.includes(n))&&initial.synthetic.length>=10,JSON.stringify(initial.synthetic));
   check('cat retains authored idle alongside synthesized clips',initial.clips.includes('Cat.001|IdleCat'),JSON.stringify(initial.clips));
